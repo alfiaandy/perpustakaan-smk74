@@ -7,14 +7,13 @@ import {
   AlertCircle,
   CheckCircle,
   ArrowLeft,
-  ShieldAlert,
   Eye,
   EyeOff,
   Loader2,
 } from "lucide-react";
 
 export default function ForgotPassword({ onBackToLogin }) {
-  const [username, setUsername] = useState("");
+  const [nisn, setNisn] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -23,15 +22,20 @@ export default function ForgotPassword({ onBackToLogin }) {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Helper fungsi untuk memvalidasi kekuatan format password
   const validatePasswordComplexity = (pwd) => {
+    const minLength = pwd.length >= 8;
     const hasUpperCase = /[A-Z]/.test(pwd);
     const hasLowerCase = /[a-z]/.test(pwd);
     const hasNumber = /[0-9]/.test(pwd);
     const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd);
 
     return {
-      isValid: hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar,
+      isValid:
+        minLength &&
+        hasUpperCase &&
+        hasLowerCase &&
+        hasNumber &&
+        hasSpecialChar,
     };
   };
 
@@ -40,16 +44,24 @@ export default function ForgotPassword({ onBackToLogin }) {
     setError("");
     setSuccess("");
 
-    // 1. Validasi Kekuatan Password Baru
+    const cleanNisn = nisn.trim();
+
+    // 1. Validasi NISN
+    if (!/^\d+$/.test(cleanNisn)) {
+      setError("NISN wajib berupa angka!");
+      return;
+    }
+
+    // 2. Validasi Kekuatan Password Baru
     const passwordCheck = validatePasswordComplexity(newPassword);
     if (!passwordCheck.isValid) {
       setError(
-        "Password baru wajib mengandung minimal 1 Huruf Besar, 1 Huruf Kecil, 1 Angka, dan 1 Simbol Khusus (!@#$%^&*).",
+        "Password baru wajib minimal 8 karakter dan mengandung minimal 1 Huruf Besar, 1 Huruf Kecil, 1 Angka, serta 1 Simbol Khusus (!@#$%^&*).",
       );
       return;
     }
 
-    // 2. Validasi Konfirmasi Password
+    // 3. Validasi Konfirmasi Password
     if (newPassword !== confirmPassword) {
       setError("Konfirmasi password baru tidak cocok!");
       return;
@@ -59,13 +71,13 @@ export default function ForgotPassword({ onBackToLogin }) {
 
     try {
       const res = await API.post("/auth/forgot-password", {
-        username,
+        nisn: cleanNisn,
         new_password: newPassword,
       });
 
       if (res.data.success) {
         setSuccess(res.data.message);
-        setUsername("");
+        setNisn("");
         setNewPassword("");
         setConfirmPassword("");
       }
@@ -118,17 +130,17 @@ export default function ForgotPassword({ onBackToLogin }) {
         <form onSubmit={handleSubmit} className="space-y-4 text-xs mt-10">
           <div>
             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Username / NISN Siswa
+              NISN Siswa
             </label>
             <div className="relative">
               <input
                 type="text"
                 required
                 disabled={loading}
-                placeholder="Masukkan NISN / Username Siswa..."
+                placeholder="Masukkan NISN Siswa..."
                 className="w-full pl-10 pr-4 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-amber-600 focus:bg-white text-slate-900 disabled:opacity-60"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={nisn}
+                onChange={(e) => setNisn(e.target.value)}
               />
               <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
             </div>
@@ -162,8 +174,8 @@ export default function ForgotPassword({ onBackToLogin }) {
               </button>
             </div>
             <p className="text-[10px] text-slate-500 mt-1.5 leading-tight">
-              * Wajib mengandung: 1 Huruf Besar, 1 Huruf Kecil, 1 Angka, dan 1
-              Simbol Khusus (!@#$%^&*).
+              * Minimal 8 karakter, mengandung 1 Huruf Besar, 1 Huruf Kecil, 1
+              Angka, dan 1 Simbol Khusus (!@#$%^&*).
             </p>
           </div>
 

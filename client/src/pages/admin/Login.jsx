@@ -82,14 +82,14 @@ export default function Login({
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Username / NISN
+              NISN SISWA
             </label>
             <div className="relative">
               <input
                 type="text"
                 required
                 disabled={loading}
-                placeholder="Masukkan username..."
+                placeholder="Masukkan NISN..."
                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-amber-600 focus:bg-white transition text-slate-900 disabled:opacity-60"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -151,7 +151,7 @@ export default function Login({
                 <span>Memverifikasi...</span>
               </>
             ) : (
-              <span>Masuk ke Sistem</span>
+              <span>Masuk</span>
             )}
           </button>
         </form>

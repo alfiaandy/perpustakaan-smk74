@@ -3,10 +3,22 @@ const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// Secret Key Fallback disamakan penuh dengan authMiddleware
 const JWT_SECRET = process.env.JWT_SECRET || "kunci_rahasia_smkn74";
 
-// 1. Login User (Admin, Pustakawan, atau Siswa)
+// Helper Fungsi Validasi Kompleksitas Password
+const isPasswordStrong = (password) => {
+  const minLength = password.length >= 8;
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+
+  return (
+    minLength && hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar
+  );
+};
+
+// 1. Login User (NISN untuk Siswa, Username untuk Petugas/Admin)
 exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -14,7 +26,7 @@ exports.login = async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({
         success: false,
-        message: "Username dan password wajib diisi!",
+        message: "NISN / Username dan password wajib diisi!",
       });
     }
 
@@ -28,7 +40,7 @@ exports.login = async (req, res) => {
     if (users.length === 0) {
       return res
         .status(404)
-        .json({ success: false, message: "Username tidak terdaftar!" });
+        .json({ success: false, message: "NISN / Username tidak terdaftar!" });
     }
 
     const user = users[0];
@@ -40,7 +52,6 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Generate Token JWT
     const token = jwt.sign(
       {
         id: user.id,
@@ -71,81 +82,128 @@ exports.login = async (req, res) => {
   }
 };
 
-// 2. Register User Baru
+// 2. Register Siswa Baru dengan NISN
 exports.register = async (req, res) => {
+  const connection = await db.getConnection();
   try {
-    const { username, password, full_name, role } = req.body;
+    const { nisn, username, password, full_name, role } = req.body;
 
-    if (!username || !password || !full_name) {
+    // Menerima 'nisn' atau fallback ke 'username'
+    const targetNisn = (nisn || username || "").trim();
+    const cleanFullName = (full_name || "").trim();
+    const targetRole = role ? role.trim().toLowerCase() : "siswa";
+
+    if (!targetNisn || !password || !cleanFullName) {
       return res
         .status(400)
         .json({ success: false, message: "Semua kolom form wajib diisi!" });
     }
 
-    const cleanUsername = username.trim();
-    const targetRole = role ? role.trim().toLowerCase() : "siswa";
+    // Validasi Angka Khusus NISN
+    if (!/^\d+$/.test(targetNisn)) {
+      return res.status(400).json({
+        success: false,
+        message: "NISN siswa wajib berupa angka!",
+      });
+    }
 
-    const [existing] = await db.query(
+    // Validasi Kekuatan Password
+    if (!isPasswordStrong(password)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Password terlalu lemah! Wajib minimal 8 karakter, mengandung 1 huruf besar, 1 huruf kecil, 1 angka, dan 1 simbol khusus.",
+      });
+    }
+
+    const [existing] = await connection.query(
       "SELECT id FROM users WHERE LOWER(username) = LOWER(?)",
-      [cleanUsername],
+      [targetNisn],
     );
 
     if (existing.length > 0) {
       return res.status(400).json({
         success: false,
-        message: "Username / NISN tersebut sudah terdaftar!",
+        message: "NISN tersebut sudah terdaftar!",
       });
     }
+
+    await connection.beginTransaction();
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    await db.query(
+    // Simpan NISN ke kolom 'username' tabel users
+    await connection.query(
       "INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?)",
-      [cleanUsername, hashedPassword, full_name.trim(), targetRole],
+      [targetNisn, hashedPassword, cleanFullName, targetRole],
     );
+
+    // Otomatis Simpan NISN ke 'identity_number' tabel members
+    const [existingMember] = await connection.query(
+      "SELECT id FROM members WHERE identity_number = ?",
+      [targetNisn],
+    );
+
+    if (existingMember.length === 0) {
+      await connection.query(
+        "INSERT INTO members (identity_number, full_name, role, status) VALUES (?, ?, ?, 'active')",
+        [targetNisn, cleanFullName, targetRole],
+      );
+    }
+
+    await connection.commit();
 
     res
       .status(201)
-      .json({ success: true, message: "Registrasi akun berhasil!" });
+      .json({ success: true, message: "Registrasi akun siswa berhasil!" });
   } catch (error) {
+    await connection.rollback();
     res.status(500).json({
       success: false,
       message: "Gagal menyimpan akun: " + error.message,
     });
+  } finally {
+    connection.release();
   }
 };
 
-// 3. Reset Password Khusus Siswa
+// 3. Reset Password Khusus Siswa Berdasarkan NISN
 exports.forgotPassword = async (req, res) => {
   try {
-    const { username, new_password } = req.body;
+    const { nisn, username, new_password } = req.body;
+    const targetNisn = (nisn || username || "").trim();
 
-    if (!username || !new_password) {
+    if (!targetNisn || !new_password) {
       return res.status(400).json({
         success: false,
-        message: "Username/NISN dan password baru wajib diisi!",
+        message: "NISN Siswa dan password baru wajib diisi!",
       });
     }
 
-    const cleanUsername = username.trim();
+    // Validasi Kekuatan Password Baru
+    if (!isPasswordStrong(new_password)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Password baru terlalu lemah! Wajib minimal 8 karakter, mengandung 1 huruf besar, 1 huruf kecil, 1 angka, dan 1 simbol khusus.",
+      });
+    }
 
-    // 1. Cari user berdasarkan username
     const [users] = await db.query(
       "SELECT id, role FROM users WHERE LOWER(username) = LOWER(?)",
-      [cleanUsername],
+      [targetNisn],
     );
 
     if (users.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Username / NISN Siswa tidak ditemukan!",
+        message: "NISN Siswa tidak ditemukan!",
       });
     }
 
     const user = users[0];
 
-    // 2. Proteksi Role: Tolak jika akun bertipe admin atau pustakawan
     if (user.role === "admin" || user.role === "pustakawan") {
       return res.status(403).json({
         success: false,
@@ -154,7 +212,6 @@ exports.forgotPassword = async (req, res) => {
       });
     }
 
-    // 3. Hash password baru dan simpan
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(new_password, salt);
 
@@ -166,7 +223,7 @@ exports.forgotPassword = async (req, res) => {
     res.json({
       success: true,
       message:
-        "Password akun siswa berhasil diperbarui! Silakan kembali dan login.",
+        "Password akun siswa berhasil diperbarui! Silakan kembali dan login dengan NISN Anda.",
     });
   } catch (error) {
     res.status(500).json({

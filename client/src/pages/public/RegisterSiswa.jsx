@@ -15,7 +15,7 @@ import {
 
 export default function RegisterSiswa({ onBackToLogin }) {
   const [formData, setFormData] = useState({
-    username: "",
+    nisn: "",
     password: "",
     confirmPassword: "",
     full_name: "",
@@ -28,17 +28,19 @@ export default function RegisterSiswa({ onBackToLogin }) {
 
   // Helper fungsi untuk memvalidasi kekuatan format password
   const validatePasswordComplexity = (pwd) => {
+    const minLength = pwd.length >= 8;
     const hasUpperCase = /[A-Z]/.test(pwd);
     const hasLowerCase = /[a-z]/.test(pwd);
     const hasNumber = /[0-9]/.test(pwd);
     const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd);
 
     return {
-      isValid: hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar,
-      hasUpperCase,
-      hasLowerCase,
-      hasNumber,
-      hasSpecialChar,
+      isValid:
+        minLength &&
+        hasUpperCase &&
+        hasLowerCase &&
+        hasNumber &&
+        hasSpecialChar,
     };
   };
 
@@ -47,16 +49,25 @@ export default function RegisterSiswa({ onBackToLogin }) {
     setError("");
     setSuccess("");
 
-    // 1. Validasi Kekuatan Password
+    const cleanNisn = formData.nisn.trim();
+    const cleanFullName = formData.full_name.trim();
+
+    // 1. Validasi Format NISN (Hanya Angka, contoh: 10 Digit)
+    if (!/^\d+$/.test(cleanNisn)) {
+      setError("NISN wajib berupa angka tanpa spasi!");
+      return;
+    }
+
+    // 2. Validasi Kekuatan Password
     const passwordCheck = validatePasswordComplexity(formData.password);
     if (!passwordCheck.isValid) {
       setError(
-        "Password wajib mengandung minimal 1 Huruf Besar, 1 Huruf Kecil, 1 Angka, dan 1 Simbol Khusus (!@#$%^&*).",
+        "Password wajib minimal 8 karakter dan mengandung minimal 1 Huruf Besar, 1 Huruf Kecil, 1 Angka, serta 1 Simbol Khusus (!@#$%^&*).",
       );
       return;
     }
 
-    // 2. Validasi Konfirmasi Password
+    // 3. Validasi Konfirmasi Password
     if (formData.password !== formData.confirmPassword) {
       setError("Konfirmasi password tidak cocok dengan password!");
       return;
@@ -66,16 +77,18 @@ export default function RegisterSiswa({ onBackToLogin }) {
 
     try {
       const res = await API.post("/auth/register", {
-        username: formData.username,
+        nisn: cleanNisn,
         password: formData.password,
-        full_name: formData.full_name,
+        full_name: cleanFullName,
         role: "siswa",
       });
 
       if (res.data.success) {
-        setSuccess("Pendaftaran berhasil! Silakan kembali dan login.");
+        setSuccess(
+          "Pendaftaran berhasil! Silakan kembali dan login dengan NISN Anda.",
+        );
         setFormData({
-          username: "",
+          nisn: "",
           password: "",
           confirmPassword: "",
           full_name: "",
@@ -150,18 +163,18 @@ export default function RegisterSiswa({ onBackToLogin }) {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Username / NISN
+              NISN Siswa
             </label>
             <div className="relative">
               <input
                 type="text"
                 required
                 disabled={loading}
-                placeholder="Masukkan Username / NISN..."
+                placeholder="Masukkan NISN siswa (Angka)..."
                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-amber-600 focus:bg-white transition text-slate-900 disabled:opacity-60"
-                value={formData.username}
+                value={formData.nisn}
                 onChange={(e) =>
-                  setFormData({ ...formData, username: e.target.value })
+                  setFormData({ ...formData, nisn: e.target.value })
                 }
               />
               <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -198,8 +211,8 @@ export default function RegisterSiswa({ onBackToLogin }) {
               </button>
             </div>
             <p className="text-[10px] text-slate-500 mt-1.5 leading-tight">
-              * Wajib mengandung: 1 Huruf Besar, 1 Huruf Kecil, 1 Angka, dan 1
-              Simbol Khusus (!@#$%^&*).
+              * Minimal 8 karakter, mengandung 1 Huruf Besar, 1 Huruf Kecil, 1
+              Angka, dan 1 Simbol Khusus (!@#$%^&*).
             </p>
           </div>
 
