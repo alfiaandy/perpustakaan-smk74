@@ -1,0 +1,37 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-heading: "Fraunces", Georgia, serif;
+  --font-body: "Inter", system-ui, sans-serif;
+
+  --color-primary: var(--color-brand-primary);
+  --color-secondary: var(--color-brand-secondary);
+  --color-paper: var(--color-bg-main);
+}
+
+:root {
+  /* SKEMA WARNA WEB UTAMA SEKOLAH (SMKN 74 JAKARTA) */
+  --color-brand-primary: #0b132b; /* Dark Midnight Navy (Hero & Navbar) */
+  --color-brand-secondary: #d97706; /* Warm Gold / Ochre (Accent) */
+  --color-bg-main: #f4f3ef; /* Warm Cream Off-White (Section Base) */
+  --color-surface: #ffffff; /* White Card */
+
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg-main);
+  color: #1e293b;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+}
