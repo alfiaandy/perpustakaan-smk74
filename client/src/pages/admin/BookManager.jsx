@@ -8,14 +8,20 @@ import {
   BookOpen,
   AlertTriangle,
   X,
+  Image as ImageIcon,
 } from "lucide-react";
 
 export default function BookManager() {
   const [books, setBooks] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
+  // State Foto Sampul & Preview
+  const [coverFile, setCoverFile] = useState(null);
+  const [coverPreview, setCoverPreview] = useState(null);
 
   // State Modal Konfirmasi Hapus
   const [deleteModal, setDeleteModal] = useState({
@@ -32,6 +38,8 @@ export default function BookManager() {
     year_published: 2024,
     total_stock: 1,
     rack_location: "",
+    category_id: "",
+    description: "",
   });
 
   const fetchBooks = async () => {
@@ -46,36 +54,76 @@ export default function BookManager() {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const res = await API.get("books/categories");
+      setCategories(res.data.data || res.data || []);
+    } catch (err) {
+      console.error("Gagal mengambil data kategori", err);
+    }
+  };
+
   useEffect(() => {
     fetchBooks();
   }, [search]);
 
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // Handle Pilih File Foto Sampul
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setCoverFile(file);
+      setCoverPreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const token = localStorage.getItem("token");
-    const headers = { Authorization: `Bearer ${token}` };
+
+    // Bungkus data ke dalam FormData agar file gambar terkirim
+    const data = new FormData();
+    data.append("isbn", formData.isbn);
+    data.append("title", formData.title);
+    data.append("author", formData.author);
+    data.append("publisher", formData.publisher);
+    data.append("year_published", formData.year_published);
+    data.append("total_stock", formData.total_stock);
+    data.append("available_stock", formData.total_stock);
+    data.append("rack_location", formData.rack_location);
+    data.append("category_id", formData.category_id);
+    data.append("description", formData.description); // <-- Tambahkan ini
+    if (coverFile) {
+      data.append("cover_image", coverFile);
+    }
 
     try {
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+
       if (editingId) {
-        await API.put(
-          `/books/${editingId}`,
-          { ...formData, available_stock: formData.total_stock },
-          { headers },
-        );
+        await API.put(`/books/${editingId}`, data, config);
       } else {
-        await API.post("/books", formData, { headers });
+        await API.post("/books", data, config);
       }
+
       setIsModalOpen(false);
       resetForm();
       fetchBooks();
     } catch (err) {
+      console.error("Error submit book:", err.response?.data);
       alert(
         err.response?.data?.message || "Terjadi kesalahan saat menyimpan data",
       );
     }
   };
 
-  // Pop-up Konfirmasi Hapus
   const openDeleteModal = (id, title) => {
     setDeleteModal({
       isOpen: true,
@@ -116,12 +164,22 @@ export default function BookManager() {
       year_published: book.year_published || 2024,
       total_stock: book.total_stock || 1,
       rack_location: book.rack_location || "",
+      category_id: book.category_id || "",
+      description: book.description || "",
     });
+    setCoverFile(null);
+    setCoverPreview(
+      book.cover_image
+        ? `http://localhost:5000/uploads/${book.cover_image}`
+        : null,
+    );
     setIsModalOpen(true);
   };
 
   const resetForm = () => {
     setEditingId(null);
+    setCoverFile(null);
+    setCoverPreview(null);
     setFormData({
       isbn: "",
       title: "",
@@ -130,6 +188,8 @@ export default function BookManager() {
       year_published: 2024,
       total_stock: 1,
       rack_location: "",
+      category_id: "",
+      description: "",
     });
   };
 
@@ -180,8 +240,10 @@ export default function BookManager() {
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
             <tr>
+              <th className="p-4">Sampul</th>
               <th className="p-4">ISBN</th>
               <th className="p-4">Judul Buku</th>
+              <th className="p-4">Kategori</th>
               <th className="p-4">Penulis</th>
               <th className="p-4">Stok (Tersedia / Total)</th>
               <th className="p-4">Lokasi Rak</th>
@@ -191,23 +253,39 @@ export default function BookManager() {
           <tbody className="divide-y divide-slate-100 text-slate-700">
             {loading ? (
               <tr>
-                <td colSpan="6" className="p-8 text-center text-slate-400">
+                <td colSpan="8" className="p-8 text-center text-slate-400">
                   Memuat data buku...
                 </td>
               </tr>
             ) : books.length === 0 ? (
               <tr>
-                <td colSpan="6" className="p-8 text-center text-slate-400">
+                <td colSpan="8" className="p-8 text-center text-slate-400">
                   Tidak ada koleksi buku yang ditemukan.
                 </td>
               </tr>
             ) : (
               books.map((b) => (
                 <tr key={b.id} className="hover:bg-slate-50/80 transition">
+                  <td className="p-4">
+                    {b.cover_image ? (
+                      <img
+                        src={`http://localhost:5000/uploads/${b.cover_image}`}
+                        alt={b.title}
+                        className="w-10 h-14 object-cover rounded-lg border border-slate-200"
+                      />
+                    ) : (
+                      <div className="w-10 h-14 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200 text-slate-400">
+                        <ImageIcon className="w-5 h-5" />
+                      </div>
+                    )}
+                  </td>
                   <td className="p-4 font-mono text-slate-600">
                     {b.isbn || "-"}
                   </td>
                   <td className="p-4 font-bold text-slate-900">{b.title}</td>
+                  <td className="p-4 font-semibold text-amber-700">
+                    {b.category_name || b.category || "-"}
+                  </td>
                   <td className="p-4 text-slate-600">{b.author}</td>
                   <td className="p-4 font-semibold">
                     <span className="text-emerald-600">
@@ -244,7 +322,7 @@ export default function BookManager() {
       {/* MODAL FORM TAMBAH/EDIT BUKU */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl relative border border-slate-100">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl relative border border-slate-100 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setIsModalOpen(false)}
               className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition cursor-pointer"
@@ -257,6 +335,32 @@ export default function BookManager() {
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+              {/* INPUT FILE FOTO SAMPUL BUKU */}
+              <div>
+                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Sampul Buku (Foto)
+                </label>
+                <div className="flex items-center gap-3">
+                  {coverPreview ? (
+                    <img
+                      src={coverPreview}
+                      alt="Preview"
+                      className="w-14 h-20 object-cover rounded-xl border border-slate-200"
+                    />
+                  ) : (
+                    <div className="w-14 h-20 bg-slate-100 rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-slate-400">
+                      <ImageIcon className="w-6 h-6" />
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 cursor-pointer"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
                   ISBN
@@ -287,6 +391,43 @@ export default function BookManager() {
                   }
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Sinopsis / Deskripsi Buku
+                </label>
+                <textarea
+                  rows="3"
+                  placeholder="Masukkan sinopsis atau ringkasan isi buku..."
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-amber-600 text-slate-900"
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* DROPDOWN KATEGORI BUKU */}
+              <div>
+                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Kategori Buku
+                </label>
+                <select
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-amber-600 text-slate-900 cursor-pointer"
+                  value={formData.category_id}
+                  onChange={(e) =>
+                    setFormData({ ...formData, category_id: e.target.value })
+                  }
+                  required
+                >
+                  <option value="">-- Pilih Kategori --</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

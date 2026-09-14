@@ -10,6 +10,7 @@ router.put("/:id/approve", authMiddleware, loanController.approveLoan);
 router.put("/:id/return", authMiddleware, loanController.returnBook);
 
 // Akses Siswa Mandiri (Via Web OPAC)
+router.get("/my-loans", authMiddleware, loanController.getMyLoans);
 router.post("/request", authMiddleware, loanController.requestLoan);
 
 module.exports = router;

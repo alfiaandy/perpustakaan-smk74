@@ -52,13 +52,19 @@ export default function RegisterSiswa({ onBackToLogin }) {
     const cleanNisn = formData.nisn.trim();
     const cleanFullName = formData.full_name.trim();
 
-    // 1. Validasi Format NISN (Hanya Angka, contoh: 10 Digit)
+    // 1. Validasi Format NISN (Hanya Angka)
     if (!/^\d+$/.test(cleanNisn)) {
       setError("NISN wajib berupa angka tanpa spasi!");
       return;
     }
 
-    // 2. Validasi Kekuatan Password
+    // 2. Validasi Minimal Panjang NISN (Minimal 4 Digit)
+    if (cleanNisn.length < 4) {
+      setError("NISN minimal harus terdiri dari 4 digit angka!");
+      return;
+    }
+
+    // 3. Validasi Kekuatan Password
     const passwordCheck = validatePasswordComplexity(formData.password);
     if (!passwordCheck.isValid) {
       setError(
@@ -67,7 +73,7 @@ export default function RegisterSiswa({ onBackToLogin }) {
       return;
     }
 
-    // 3. Validasi Konfirmasi Password
+    // 4. Validasi Konfirmasi Password
     if (formData.password !== formData.confirmPassword) {
       setError("Konfirmasi password tidak cocok dengan password!");
       return;
@@ -170,7 +176,7 @@ export default function RegisterSiswa({ onBackToLogin }) {
                 type="text"
                 required
                 disabled={loading}
-                placeholder="Masukkan NISN siswa (Angka)..."
+                placeholder="Masukkan NISN siswa (Min. 4 angka)..."
                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-amber-600 focus:bg-white transition text-slate-900 disabled:opacity-60"
                 value={formData.nisn}
                 onChange={(e) =>

@@ -3,7 +3,8 @@ const db = require("../config/db");
 // 1. Ambil Semua Buku (Public OPAC dengan Search & Filter Kategori)
 exports.getBooks = async (req, res) => {
   try {
-    const { search, category_id } = req.query;
+    const { search, category_id, category, sortBy } = req.query;
+
     let query = `
       SELECT b.*, c.name as category_name 
       FROM books b 
@@ -12,7 +13,6 @@ exports.getBooks = async (req, res) => {
     `;
     const params = [];
 
-    // Validasi agar search hanya diproses jika benar-benar ada teksnya
     if (search && search.trim() !== "") {
       query += ` AND (b.title LIKE ? OR b.author LIKE ? OR b.isbn LIKE ?)`;
       const searchPattern = `%${search.trim()}%`;
@@ -22,9 +22,16 @@ exports.getBooks = async (req, res) => {
     if (category_id) {
       query += ` AND b.category_id = ?`;
       params.push(category_id);
+    } else if (category && category !== "all") {
+      query += ` AND c.name = ?`;
+      params.push(category);
     }
 
-    query += ` ORDER BY b.id DESC`;
+    if (sortBy === "title-asc") {
+      query += ` ORDER BY b.title ASC`;
+    } else {
+      query += ` ORDER BY b.id DESC`;
+    }
 
     const [rows] = await db.query(query, params);
     res.json({ success: true, data: rows });
@@ -45,6 +52,7 @@ exports.createBook = async (req, res) => {
       total_stock,
       rack_location,
       category_id,
+      description,
     } = req.body;
 
     if (!title || !author || !total_stock) {
@@ -54,12 +62,13 @@ exports.createBook = async (req, res) => {
       });
     }
 
+    const cover_image = req.file ? req.file.filename : null;
     const available_stock = Number(total_stock);
 
     await db.query(
       `INSERT INTO books 
-      (isbn, title, author, publisher, year_published, total_stock, available_stock, rack_location, category_id) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (isbn, title, author, publisher, year_published, total_stock, available_stock, rack_location, category_id, description, cover_image) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         isbn || null,
         title,
@@ -70,6 +79,8 @@ exports.createBook = async (req, res) => {
         available_stock,
         rack_location || null,
         category_id || null,
+        description || null,
+        cover_image,
       ],
     );
 
@@ -95,7 +106,29 @@ exports.updateBook = async (req, res) => {
       available_stock,
       rack_location,
       category_id,
+      description,
     } = req.body;
+
+    let updateCoverQuery = "";
+    const params = [
+      isbn || null,
+      title,
+      author,
+      publisher || null,
+      year_published || null,
+      total_stock,
+      available_stock ?? total_stock,
+      rack_location || null,
+      category_id || null,
+      description || null,
+    ];
+
+    if (req.file) {
+      updateCoverQuery = ", cover_image = ? ";
+      params.push(req.file.filename);
+    }
+
+    params.push(id);
 
     await db.query(
       `UPDATE books SET 
@@ -107,20 +140,11 @@ exports.updateBook = async (req, res) => {
         total_stock = ?, 
         available_stock = ?, 
         rack_location = ?, 
-        category_id = ? 
+        category_id = ?,
+        description = ?
+        ${updateCoverQuery}
       WHERE id = ?`,
-      [
-        isbn || null,
-        title,
-        author,
-        publisher || null,
-        year_published || null,
-        total_stock,
-        available_stock ?? total_stock,
-        rack_location || null,
-        category_id || null,
-        id,
-      ],
+      params,
     );
 
     res.json({ success: true, message: "Data buku berhasil diperbarui!" });

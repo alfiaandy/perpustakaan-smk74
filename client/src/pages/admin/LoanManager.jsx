@@ -10,6 +10,8 @@ import {
   Check,
   Ban,
   AlertCircle,
+  Image as ImageIcon,
+  HelpCircle,
 } from "lucide-react";
 
 export default function LoanManager() {
@@ -21,10 +23,28 @@ export default function LoanManager() {
   const [activeTab, setActiveTab] = useState("pending"); // 'pending' | 'all'
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Form State Pinjam Langsung
   const [formData, setFormData] = useState({
     user_id: "",
     book_id: "",
     loan_days: 7,
+  });
+
+  // State Pop Box Konfirmasi Aksi (Setujui, Tolak, Kembalikan)
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "approve", // 'approve' | 'reject' | 'return'
+    actionData: null,
+  });
+
+  // State Pop Box Notifikasi Respon (Sukses / Error)
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    isError: false,
   });
 
   const fetchData = async () => {
@@ -50,37 +70,99 @@ export default function LoanManager() {
     fetchData();
   }, []);
 
-  // Setujui Pengajuan Siswa
-  const handleApprove = async (id, studentName, bookTitle) => {
-    if (
-      !window.confirm(
-        `Setujui pengajuan peminjaman "${bookTitle}" oleh ${studentName}?`,
-      )
-    )
-      return;
-    try {
-      const res = await API.put(`/loans/${id}/approve`);
-      if (res.data.success) {
-        alert("Peminjaman disetujui! Buku dapat diserahkan ke siswa.");
-        fetchData();
-      }
-    } catch (err) {
-      alert(err.response?.data?.message || "Gagal menyetujui peminjaman");
-    }
+  // 1. Trigger Pop Box Persetujuan
+  const handleApproveClick = (id, studentName, bookTitle) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Konfirmasi Persetujuan",
+      message: `Setujui pengajuan peminjaman "${bookTitle}" oleh ${studentName}?`,
+      type: "approve",
+      actionData: { id },
+    });
   };
 
-  // Tolak Pengajuan Siswa
-  const handleReject = async (id, studentName) => {
-    if (!window.confirm(`Tolak pengajuan peminjaman oleh ${studentName}?`))
-      return;
+  // 2. Trigger Pop Box Penolakan
+  const handleRejectClick = (id, studentName) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Konfirmasi Penolakan",
+      message: `Tolak pengajuan peminjaman oleh ${studentName}?`,
+      type: "reject",
+      actionData: { id },
+    });
+  };
+
+  // 3. Trigger Pop Box Pengembalian Buku
+  const handleReturnClick = (id, bookTitle, studentName) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Konfirmasi Pengembalian",
+      message: `Proses pengembalian buku "${bookTitle}" oleh ${studentName}?`,
+      type: "return",
+      actionData: { id },
+    });
+  };
+
+  // Eksekusi Pilihan Pilihan dari Pop Box Konfirmasi
+  const handleExecuteAction = async () => {
+    const { type, actionData } = confirmModal;
+    setConfirmModal({ ...confirmModal, isOpen: false });
+
+    if (!actionData?.id) return;
+
     try {
-      const res = await API.put(`/loans/${id}/reject`);
-      if (res.data.success) {
-        alert("Pengajuan berhasil ditolak.");
-        fetchData();
+      if (type === "approve") {
+        const res = await API.put(`/loans/${actionData.id}/approve`);
+        if (res.data.success) {
+          setAlertModal({
+            isOpen: true,
+            title: "Peminjaman Disetujui!",
+            message: "Peminjaman disetujui! Buku berhasil diserahkan ke siswa.",
+            isError: false,
+          });
+          fetchData();
+        }
+      } else if (type === "reject") {
+        const res = await API.put(`/loans/${actionData.id}/reject`);
+        if (res.data.success) {
+          setAlertModal({
+            isOpen: true,
+            title: "Pengajuan Ditolak",
+            message: "Pengajuan peminjaman berhasil dibatalkan.",
+            isError: false,
+          });
+          fetchData();
+        }
+      } else if (type === "return") {
+        const res = await API.put(`/loans/${actionData.id}/return`);
+        if (res.data.success) {
+          if (res.data.fine_amount > 0) {
+            setAlertModal({
+              isOpen: true,
+              title: "Buku Dikembalikan (Terkena Denda)",
+              message: `Buku berhasil dikembalikan! Terkena denda keterlambatan: Rp ${res.data.fine_amount.toLocaleString(
+                "id-ID",
+              )}`,
+              isError: true,
+            });
+          } else {
+            setAlertModal({
+              isOpen: true,
+              title: "Pengembalian Sukses!",
+              message: "Buku berhasil dikembalikan tepat waktu!",
+              isError: false,
+            });
+          }
+          fetchData();
+        }
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Gagal menolak peminjaman");
+      setAlertModal({
+        isOpen: true,
+        title: "Gagal Memproses",
+        message: err.response?.data?.message || "Gagal memproses transaksi.",
+        isError: true,
+      });
     }
   };
 
@@ -92,36 +174,21 @@ export default function LoanManager() {
       if (res.data.success) {
         setIsModalOpen(false);
         setFormData({ user_id: "", book_id: "", loan_days: 7 });
+        setAlertModal({
+          isOpen: true,
+          title: "Peminjaman Langsung Sukses!",
+          message: "Transaksi peminjaman langsung di tempat berhasil dicatat.",
+          isError: false,
+        });
         fetchData();
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Gagal memproses peminjaman");
-    }
-  };
-
-  // Proses Pengembalian Buku
-  const handleReturnBook = async (id, bookTitle, studentName) => {
-    if (
-      !window.confirm(
-        `Proses pengembalian buku "${bookTitle}" oleh ${studentName}?`,
-      )
-    )
-      return;
-
-    try {
-      const res = await API.put(`/loans/${id}/return`);
-      if (res.data.success) {
-        if (res.data.fine_amount > 0) {
-          alert(
-            `Buku berhasil dikembalikan! Terkena denda keterlambatan: Rp ${res.data.fine_amount.toLocaleString("id-ID")}`,
-          );
-        } else {
-          alert("Buku berhasil dikembalikan tepat waktu!");
-        }
-        fetchData();
-      }
-    } catch (err) {
-      alert(err.response?.data?.message || "Gagal memproses pengembalian");
+      setAlertModal({
+        isOpen: true,
+        title: "Gagal Peminjaman",
+        message: err.response?.data?.message || "Gagal memproses peminjaman.",
+        isError: true,
+      });
     }
   };
 
@@ -213,10 +280,10 @@ export default function LoanManager() {
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
             <tr>
-              <th className="p-4">Siswa</th>
               <th className="p-4">Buku</th>
-              <th className="p-4">Tgl Pinjam / Pengajuan</th>
-              <th className="p-4">Batas Kembali</th>
+              <th className="p-4">Siswa / Peminjam</th>
+              <th className="p-4">Tgl Pinjam / Booking</th>
+              <th className="p-4">Batas Ambil (H+7) / Kembali</th>
               <th className="p-4">Status</th>
               <th className="p-4">Denda</th>
               <th className="p-4 text-center">Aksi</th>
@@ -238,99 +305,255 @@ export default function LoanManager() {
                 </td>
               </tr>
             ) : (
-              filteredLoans.map((l) => (
-                <tr key={l.id} className="hover:bg-slate-50/80 transition">
-                  <td className="p-4">
-                    <p className="font-bold text-slate-900 capitalize">
-                      {l.student_name}
-                    </p>
-                    <p className="font-mono text-[10px] text-slate-400">
-                      {l.student_nisn}
-                    </p>
-                  </td>
-                  <td className="p-4 font-semibold text-slate-800">
-                    {l.book_title}
-                  </td>
-                  <td className="p-4 text-slate-600">
-                    {new Date(l.loan_date).toLocaleDateString("id-ID")}
-                  </td>
-                  <td className="p-4 text-slate-600">
-                    {new Date(l.due_date).toLocaleDateString("id-ID")}
-                  </td>
-                  <td className="p-4">
-                    {l.status === "menunggu_konfirmasi" && (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                        <Clock className="w-3 h-3 mr-1" /> Menunggu Konfirmasi
-                      </span>
-                    )}
-                    {l.status === "dipinjam" && (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                        <Clock className="w-3 h-3 mr-1" /> Sedang Dipinjam
-                      </span>
-                    )}
-                    {l.status === "dikembalikan" && (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <CheckCircle className="w-3 h-3 mr-1" /> Dikembalikan
-                      </span>
-                    )}
-                    {l.status === "ditolak" && (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                        <AlertCircle className="w-3 h-3 mr-1" /> Ditolak
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-4 font-mono font-bold text-slate-700">
-                    {l.fine_amount > 0 ? (
-                      <span className="text-rose-600">
-                        Rp {Number(l.fine_amount).toLocaleString("id-ID")}
-                      </span>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  <td className="p-4 text-center">
-                    {/* Aksi untuk Pengajuan Siswa */}
-                    {l.status === "menunggu_konfirmasi" && (
-                      <div className="flex items-center justify-center gap-1.5">
+              filteredLoans.map((l) => {
+                const isBorrowed =
+                  l.status === "dipinjam" || l.status === "borrowed";
+                const isReturned =
+                  l.status === "dikembalikan" || l.status === "returned";
+                const isPending = l.status === "menunggu_konfirmasi";
+                const isOverdue =
+                  isBorrowed && l.due_date && new Date(l.due_date) < new Date();
+
+                return (
+                  <tr key={l.id} className="hover:bg-slate-50/80 transition">
+                    {/* TAMPILAN SAMPUL BUKU & JUDUL */}
+                    <td className="p-4 flex items-center gap-3">
+                      {l.cover_image ? (
+                        <img
+                          src={`http://localhost:5000/uploads/${l.cover_image}`}
+                          alt={l.book_title}
+                          className="w-8 h-12 object-cover rounded border border-slate-200"
+                        />
+                      ) : (
+                        <div className="w-8 h-12 bg-slate-100 rounded flex items-center justify-center border border-slate-200 text-slate-400">
+                          <ImageIcon className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-semibold text-slate-800 leading-snug">
+                          {l.book_title}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          ID Transaksi: #{l.id}
+                        </p>
+                      </div>
+                    </td>
+
+                    <td className="p-4">
+                      <p className="font-bold text-slate-900 capitalize">
+                        {l.student_name}
+                      </p>
+                      <p className="font-mono text-[10px] text-slate-400">
+                        NISN: {l.student_nisn || "-"}
+                      </p>
+                    </td>
+
+                    <td className="p-4 text-slate-600">
+                      {l.loan_date
+                        ? new Date(l.loan_date).toLocaleDateString("id-ID")
+                        : l.booking_date
+                          ? new Date(l.booking_date).toLocaleDateString("id-ID")
+                          : "-"}
+                    </td>
+                    <td className="p-4 text-slate-600">
+                      {l.due_date
+                        ? new Date(l.due_date).toLocaleDateString("id-ID")
+                        : l.max_take_date
+                          ? new Date(l.max_take_date).toLocaleDateString(
+                              "id-ID",
+                            )
+                          : "-"}
+                    </td>
+
+                    {/* STATUS TRANSACTION BADGE */}
+                    <td className="p-4">
+                      {isPending && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          <Clock className="w-3 h-3 mr-1" /> Menunggu Konfirmasi
+                        </span>
+                      )}
+                      {isBorrowed && !isOverdue && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                          <Clock className="w-3 h-3 mr-1" /> Sedang Dipinjam
+                        </span>
+                      )}
+                      {isBorrowed && isOverdue && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">
+                          <AlertCircle className="w-3 h-3 mr-1" /> Terlambat
+                        </span>
+                      )}
+                      {isReturned && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <CheckCircle className="w-3 h-3 mr-1" /> Dikembalikan
+                        </span>
+                      )}
+                      {l.status === "ditolak" && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                          <AlertCircle className="w-3 h-3 mr-1" /> Ditolak
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="p-4 font-mono font-bold text-slate-700">
+                      {l.fine_amount > 0 ? (
+                        <span className="text-rose-600">
+                          Rp {Number(l.fine_amount).toLocaleString("id-ID")}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+
+                    <td className="p-4 text-center">
+                      {isPending && (
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() =>
+                              handleApproveClick(
+                                l.id,
+                                l.student_name,
+                                l.book_title,
+                              )
+                            }
+                            className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition cursor-pointer"
+                            title="Setujui Peminjaman"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleRejectClick(l.id, l.student_name)
+                            }
+                            className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition cursor-pointer"
+                            title="Tolak Pengajuan"
+                          >
+                            <Ban className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+
+                      {isBorrowed && (
                         <button
                           onClick={() =>
-                            handleApprove(l.id, l.student_name, l.book_title)
+                            handleReturnClick(
+                              l.id,
+                              l.book_title,
+                              l.student_name,
+                            )
                           }
-                          className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition cursor-pointer"
-                          title="Setujui Peminjaman"
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition text-[11px] font-bold cursor-pointer shadow-sm"
                         >
-                          <Check className="w-4 h-4" />
+                          Kembalikan Buku
                         </button>
-                        <button
-                          onClick={() => handleReject(l.id, l.student_name)}
-                          className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition cursor-pointer"
-                          title="Tolak Pengajuan"
-                        >
-                          <Ban className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Aksi Pengembalikan Buku */}
-                    {l.status === "dipinjam" && (
-                      <button
-                        onClick={() =>
-                          handleReturnBook(l.id, l.book_title, l.student_name)
-                        }
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition text-[11px] font-bold cursor-pointer shadow-sm"
-                      >
-                        Kembalikan Buku
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      {/* MODAL FORM PINJAM LANGSUNG */}
+      {/* POP BOX MODAL KONFIRMASI (GANTI WINDOW.CONFIRM) */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-slate-100 text-center space-y-4 relative">
+            <div
+              className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto shadow-inner ${
+                confirmModal.type === "reject"
+                  ? "bg-rose-100 text-rose-600"
+                  : "bg-amber-100 text-amber-600"
+              }`}
+            >
+              <HelpCircle className="w-7 h-7" />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold font-heading text-slate-900">
+                {confirmModal.title}
+              </h3>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                {confirmModal.message}
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setConfirmModal({ ...confirmModal, isOpen: false })
+                }
+                className="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl text-xs transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteAction}
+                className={`w-1/2 py-2.5 text-white font-bold rounded-xl text-xs transition shadow-md cursor-pointer ${
+                  confirmModal.type === "reject"
+                    ? "bg-rose-600 hover:bg-rose-700"
+                    : "bg-emerald-600 hover:bg-emerald-700"
+                }`}
+              >
+                Ya, Lanjutkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POP BOX MODAL NOTIFIKASI HASIL (GANTI WINDOW.ALERT) */}
+      {alertModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-slate-100 text-center space-y-4 relative">
+            <div
+              className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto shadow-inner ${
+                alertModal.isError
+                  ? "bg-rose-100 text-rose-600"
+                  : "bg-emerald-100 text-emerald-600"
+              }`}
+            >
+              {alertModal.isError ? (
+                <AlertCircle className="w-7 h-7" />
+              ) : (
+                <CheckCircle className="w-7 h-7" />
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold font-heading text-slate-900">
+                {alertModal.title}
+              </h3>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                {alertModal.message}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                setAlertModal({
+                  isOpen: false,
+                  title: "",
+                  message: "",
+                  isError: false,
+                })
+              }
+              className={`w-full py-3 text-white font-semibold rounded-xl text-xs transition shadow-md cursor-pointer ${
+                alertModal.isError
+                  ? "bg-rose-600 hover:bg-rose-700"
+                  : "bg-emerald-600 hover:bg-emerald-700"
+              }`}
+            >
+              Mengerti
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL FORM PINJAM LANGSUNG DI TEMPAT */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl relative border border-slate-100">

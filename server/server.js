@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 require("dotenv").config();
 
 const app = express();
@@ -7,6 +8,9 @@ const app = express();
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+// Menjadikan folder 'uploads' publik agar foto sampul buku bisa diakses di frontend
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Main API Routes
 app.use("/api/auth", require("./routes/authRoutes"));

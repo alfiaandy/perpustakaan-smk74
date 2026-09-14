@@ -24,10 +24,11 @@ export default function Sidebar({
   ];
 
   return (
-    <aside className="w-64 bg-[var(--color-brand-primary)] text-slate-300 min-h-screen flex flex-col justify-between border-r border-slate-800">
-      <div>
+    <aside className="w-64 bg-[var(--color-brand-primary)] text-slate-300 h-screen sticky top-0 flex flex-col justify-between border-r border-slate-800 flex-shrink-0 z-30">
+      {/* 1. AREA MENUS ATAS (Diberi overflow-y-auto agar aman jika menu sangat banyak) */}
+      <div className="flex-1 overflow-y-auto">
         {/* Brand Header */}
-        <div className="p-6 border-b border-slate-800/80 flex items-center space-x-3">
+        <div className="p-6 border-b border-slate-800/80 flex items-center space-x-3 sticky top-0 bg-[var(--color-brand-primary)] z-10">
           <img
             src={logo74}
             alt="Logo SMKN 74"
@@ -66,8 +67,8 @@ export default function Sidebar({
         </nav>
       </div>
 
-      {/* User Profile, Web Preview & Logout */}
-      <div className="p-4 border-t border-slate-800/80 space-y-2">
+      {/* 2. AREA TOMBOL BAWAH (Terkunci Permanen di Dasar Layar) */}
+      <div className="p-4 border-t border-slate-800/80 space-y-2 bg-[var(--color-brand-primary)] mt-auto">
         <button
           onClick={onGoToCatalog}
           className="w-full flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 text-amber-500 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer"

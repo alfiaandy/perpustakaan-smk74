@@ -107,6 +107,14 @@ exports.register = async (req, res) => {
       });
     }
 
+    // Validasi Minimal Panjang NISN (Minimal 4 Digit)
+    if (targetNisn.length < 4) {
+      return res.status(400).json({
+        success: false,
+        message: "NISN siswa minimal harus terdiri dari 4 digit angka!",
+      });
+    }
+
     // Validasi Kekuatan Password
     if (!isPasswordStrong(password)) {
       return res.status(400).json({
