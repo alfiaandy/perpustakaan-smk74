@@ -7,6 +7,9 @@ import {
   ArrowLeftRight,
   LogOut,
   Globe,
+  Newspaper,
+  FileText,
+  UserCheck, // Import icon untuk Tim Pustakawan
 } from "lucide-react";
 
 export default function Sidebar({
@@ -21,11 +24,14 @@ export default function Sidebar({
     { id: "books", label: "Kelola Buku", icon: BookOpen },
     { id: "members", label: "Data Anggota", icon: Users },
     { id: "loans", label: "Transaksi Pinjam", icon: ArrowLeftRight },
+    { id: "news", label: "Kelola Berita", icon: Newspaper },
+    { id: "modules", label: "Modul Digital", icon: FileText },
+    { id: "librarians", label: "Tim Pustakawan", icon: UserCheck },
   ];
 
   return (
     <aside className="w-64 bg-[var(--color-brand-primary)] text-slate-300 h-screen sticky top-0 flex flex-col justify-between border-r border-slate-800 flex-shrink-0 z-30">
-      {/* 1. AREA MENUS ATAS (Diberi overflow-y-auto agar aman jika menu sangat banyak) */}
+      {/* 1. AREA MENUS ATAS */}
       <div className="flex-1 overflow-y-auto">
         {/* Brand Header */}
         <div className="p-6 border-b border-slate-800/80 flex items-center space-x-3 sticky top-0 bg-[var(--color-brand-primary)] z-10">
@@ -38,7 +44,7 @@ export default function Sidebar({
             <h1 className="font-heading font-bold text-white text-base leading-tight">
               PERPUSTAKAAN
             </h1>
-            <p className="text-[10px] text-amber-500 tracking-wider font-semibold uppercase">
+            <p className="text-xs text-amber-500 tracking-wider font-semibold uppercase">
               Panel Petugas
             </p>
           </div>
@@ -53,13 +59,13 @@ export default function Sidebar({
               <button
                 key={item.id}
                 onClick={() => setActiveMenu(item.id)}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition cursor-pointer ${
                   isActive
                     ? "bg-amber-600 text-white shadow-lg shadow-amber-600/20"
                     : "hover:bg-slate-800/60 text-slate-400 hover:text-white"
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-4.5 h-4.5" />
                 <span>{item.label}</span>
               </button>
             );
@@ -67,11 +73,11 @@ export default function Sidebar({
         </nav>
       </div>
 
-      {/* 2. AREA TOMBOL BAWAH (Terkunci Permanen di Dasar Layar) */}
+      {/* 2. AREA TOMBOL BAWAH */}
       <div className="p-4 border-t border-slate-800/80 space-y-2 bg-[var(--color-brand-primary)] mt-auto">
         <button
           onClick={onGoToCatalog}
-          className="w-full flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 text-amber-500 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer"
+          className="w-full flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 text-amber-500 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer"
         >
           <Globe className="w-4 h-4" />
           <span>Lihat Web Utama</span>
@@ -79,7 +85,7 @@ export default function Sidebar({
 
         <button
           onClick={onLogout}
-          className="w-full flex items-center justify-center space-x-2 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer"
+          className="w-full flex items-center justify-center space-x-2 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer"
         >
           <LogOut className="w-4 h-4" />
           <span>Keluar Sesi</span>

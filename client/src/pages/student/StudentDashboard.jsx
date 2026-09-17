@@ -61,27 +61,27 @@ export default function StudentDashboard({ user, onLogout, onGoToCatalog }) {
       case "booking":
       case "menunggu_konfirmasi":
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
-            <Clock className="w-3 h-3 mr-1" /> Menunggu Diambil
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">
+            <Clock className="w-3.5 h-3.5 mr-1" /> Menunggu Diambil
           </span>
         );
       case "dipinjam":
       case "borrowed":
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700 border border-sky-200">
-            <BookOpen className="w-3 h-3 mr-1" /> Sedang Dipinjam
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-700 border border-sky-200">
+            <BookOpen className="w-3.5 h-3.5 mr-1" /> Sedang Dipinjam
           </span>
         );
       case "dikembalikan":
       case "returned":
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
-            <CheckCircle2 className="w-3 h-3 mr-1" /> Dikembalikan
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+            <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Dikembalikan
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 capitalize">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 capitalize">
             {status}
           </span>
         );
@@ -103,7 +103,7 @@ export default function StudentDashboard({ user, onLogout, onGoToCatalog }) {
               <span className="font-heading font-bold text-lg tracking-wide block leading-none">
                 SMK NEGERI 74
               </span>
-              <span className="text-[10px] text-amber-500 tracking-widest uppercase font-medium">
+              <span className="text-xs text-amber-500 tracking-widest uppercase font-medium">
                 Dashboard Siswa
               </span>
             </div>
@@ -112,7 +112,7 @@ export default function StudentDashboard({ user, onLogout, onGoToCatalog }) {
           <div className="flex items-center space-x-3">
             <button
               onClick={onGoToCatalog}
-              className="inline-flex items-center text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl transition border border-slate-700 cursor-pointer"
+              className="inline-flex items-center text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl transition border border-slate-700 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4 mr-1.5" /> Kembali ke Katalog
             </button>
@@ -129,16 +129,16 @@ export default function StudentDashboard({ user, onLogout, onGoToCatalog }) {
               <User className="w-8 h-8" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold font-heading text-slate-900">
+              <h1 className="text-2xl md:text-3xl font-bold font-heading text-slate-900">
                 {user?.full_name || "Nama Siswa"}
               </h1>
-              <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+              <p className="text-sm text-slate-500 mt-1 flex items-center gap-2">
                 <span>
                   NISN:{" "}
                   <strong className="text-slate-700">{user?.username}</strong>
                 </span>
                 <span>•</span>
-                <span className="capitalize text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                <span className="capitalize text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 text-xs">
                   {user?.role || "Siswa"}
                 </span>
               </p>
@@ -148,7 +148,7 @@ export default function StudentDashboard({ user, onLogout, onGoToCatalog }) {
           {/* TOMBOL LOGOUT UTAMA SISWA */}
           <button
             onClick={onLogout}
-            className="w-full md:w-auto bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs px-5 py-3 rounded-xl transition border border-rose-200 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+            className="w-full md:w-auto bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-sm px-5 py-3 rounded-xl transition border border-rose-200 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
           >
             <LogOut className="w-4 h-4" />
             <span>Keluar Akun (Logout)</span>
@@ -159,7 +159,7 @@ export default function StudentDashboard({ user, onLogout, onGoToCatalog }) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
                 Menunggu Diambil
               </p>
               <p className="text-3xl font-bold text-slate-900 mt-2">
@@ -173,7 +173,7 @@ export default function StudentDashboard({ user, onLogout, onGoToCatalog }) {
 
           <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
                 Sedang Dipinjam
               </p>
               <p className="text-3xl font-bold text-slate-900 mt-2">
@@ -187,7 +187,7 @@ export default function StudentDashboard({ user, onLogout, onGoToCatalog }) {
 
           <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
                 Selesai / Dikembalikan
               </p>
               <p className="text-3xl font-bold text-slate-900 mt-2">
@@ -205,20 +205,20 @@ export default function StudentDashboard({ user, onLogout, onGoToCatalog }) {
           <div className="p-6 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <BookmarkCheck className="w-5 h-5 text-amber-600" />
-              <h2 className="text-lg font-bold font-heading text-slate-900">
+              <h2 className="text-xl font-bold font-heading text-slate-900">
                 Daftar Peminjaman & Booking Saya
               </h2>
             </div>
             <button
               onClick={fetchMyLoans}
-              className="text-xs font-semibold text-amber-600 hover:underline cursor-pointer"
+              className="text-sm font-semibold text-amber-600 hover:underline cursor-pointer"
             >
               Refresh Data
             </button>
           </div>
 
           {error && (
-            <div className="m-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-2xl flex items-center">
+            <div className="m-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-2xl flex items-center">
               <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
               <span>{error}</span>
             </div>
@@ -227,15 +227,15 @@ export default function StudentDashboard({ user, onLogout, onGoToCatalog }) {
           {loading ? (
             <div className="py-20 text-center text-slate-500 flex items-center justify-center gap-2">
               <Loader2 className="w-5 h-5 animate-spin text-amber-600" />
-              <span className="text-xs font-medium">
+              <span className="text-sm font-medium">
                 Memuat data peminjaman...
               </span>
             </div>
           ) : loans.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+              <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 uppercase font-bold tracking-wider">
+                  <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 uppercase font-bold tracking-wider text-xs">
                     <th className="p-4 pl-6">Judul Buku</th>
                     <th className="p-4">Tanggal Booking</th>
                     <th className="p-4">Maksimal Ambil (H+7)</th>
@@ -292,12 +292,12 @@ export default function StudentDashboard({ user, onLogout, onGoToCatalog }) {
           ) : (
             <div className="py-16 text-center text-slate-500 space-y-3">
               <BookOpen className="w-10 h-10 mx-auto text-slate-300" />
-              <p className="text-xs">
+              <p className="text-sm">
                 Anda belum memiliki riwayat booking atau peminjaman buku.
               </p>
               <button
                 onClick={onGoToCatalog}
-                className="inline-block bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition cursor-pointer"
+                className="inline-block bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition cursor-pointer"
               >
                 Cari & Pinjam Buku Sekarang
               </button>

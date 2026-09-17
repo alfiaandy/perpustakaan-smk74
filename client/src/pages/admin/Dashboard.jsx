@@ -3,6 +3,9 @@ import Sidebar from "../../components/Sidebar";
 import BookManager from "./BookManager";
 import MemberManager from "./MemberManager";
 import LoanManager from "./LoanManager";
+import NewsManager from "./NewsManager";
+import ModuleManager from "./ModuleManager";
+import LibrarianManager from "./LibrarianManager";
 import { BookOpen, Users, ArrowLeftRight, Clock } from "lucide-react";
 
 export default function Dashboard({ user, onLogout, onGoToCatalog }) {
@@ -23,10 +26,10 @@ export default function Dashboard({ user, onLogout, onGoToCatalog }) {
       <main className="flex-1 p-8 overflow-y-auto">
         <header className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold font-heading text-slate-900">
+            <h1 className="text-3xl md:text-4xl font-bold font-heading text-slate-900">
               Selamat Datang, {user?.full_name || "Petugas"}!
             </h1>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-sm text-slate-500 mt-1">
               Ringkasan statistik dan aktivitas perpustakaan hari ini.
             </p>
           </div>
@@ -42,10 +45,10 @@ export default function Dashboard({ user, onLogout, onGoToCatalog }) {
                   <BookOpen className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 font-medium">
+                  <p className="text-sm text-slate-500 font-medium">
                     Total Koleksi
                   </p>
-                  <h3 className="text-2xl font-bold font-heading text-slate-900">
+                  <h3 className="text-3xl font-bold font-heading text-slate-900">
                     120
                   </h3>
                 </div>
@@ -56,10 +59,10 @@ export default function Dashboard({ user, onLogout, onGoToCatalog }) {
                   <Users className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 font-medium">
+                  <p className="text-sm text-slate-500 font-medium">
                     Total Anggota
                   </p>
-                  <h3 className="text-2xl font-bold font-heading text-slate-900">
+                  <h3 className="text-3xl font-bold font-heading text-slate-900">
                     450
                   </h3>
                 </div>
@@ -70,10 +73,10 @@ export default function Dashboard({ user, onLogout, onGoToCatalog }) {
                   <ArrowLeftRight className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 font-medium">
+                  <p className="text-sm text-slate-500 font-medium">
                     Dipinjam Hari Ini
                   </p>
-                  <h3 className="text-2xl font-bold font-heading text-slate-900">
+                  <h3 className="text-3xl font-bold font-heading text-slate-900">
                     15
                   </h3>
                 </div>
@@ -84,10 +87,10 @@ export default function Dashboard({ user, onLogout, onGoToCatalog }) {
                   <Clock className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 font-medium">
+                  <p className="text-sm text-slate-500 font-medium">
                     Tenggat Terlewati
                   </p>
-                  <h3 className="text-2xl font-bold font-heading text-slate-900">
+                  <h3 className="text-3xl font-bold font-heading text-slate-900">
                     3
                   </h3>
                 </div>
@@ -96,19 +99,19 @@ export default function Dashboard({ user, onLogout, onGoToCatalog }) {
 
             {/* Quick Info Box */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
-              <h2 className="text-lg font-bold font-heading text-slate-900 mb-3">
+              <h2 className="text-xl font-bold font-heading text-slate-900 mb-3">
                 Informasi Sistem
               </h2>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Fitur Manajemen Data Buku, Data Anggota Siswa, dan Transaksi
-                Peminjaman/Pengembalian sudah aktif. Sistem siap digunakan untuk
-                operasional perpustakaan secara penuh.
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Fitur Manajemen Data Buku, Data Anggota Siswa, Transaksi
+                Peminjaman/Pengembalian, Pengelolaan Berita & Modul Digital,
+                serta Tim Pustakawan telah aktif sepenuhnya.
               </p>
             </div>
           </div>
         )}
 
-        {/* Component Kelola Buku (CRUD) */}
+        {/* Component Kelola Buku */}
         {activeMenu === "books" && <BookManager />}
 
         {/* Component Kelola Anggota Siswa */}
@@ -117,11 +120,23 @@ export default function Dashboard({ user, onLogout, onGoToCatalog }) {
         {/* Component Transaksi Peminjaman / Pengembalian */}
         {activeMenu === "loans" && <LoanManager />}
 
-        {/* Menu Lainnya */}
+        {/* Component Kelola Berita & Pengumuman */}
+        {activeMenu === "news" && <NewsManager />}
+
+        {/* Component Repositori Modul Digital */}
+        {activeMenu === "modules" && <ModuleManager />}
+
+        {/* Component Manajemen Tim Pustakawan */}
+        {activeMenu === "librarians" && <LibrarianManager />}
+
+        {/* Menu Lainnya (Fallback) */}
         {activeMenu !== "dashboard" &&
           activeMenu !== "books" &&
           activeMenu !== "members" &&
-          activeMenu !== "loans" && (
+          activeMenu !== "loans" &&
+          activeMenu !== "news" &&
+          activeMenu !== "modules" &&
+          activeMenu !== "librarians" && (
             <div className="bg-white p-12 rounded-2xl border border-dashed border-slate-300 text-center text-slate-500 text-sm">
               Modul <strong className="capitalize">{activeMenu}</strong> akan
               diimplementasikan pada langkah berikutnya.
