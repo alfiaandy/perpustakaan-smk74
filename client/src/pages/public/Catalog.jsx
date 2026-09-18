@@ -26,6 +26,7 @@ export default function Catalog({
   onLogout,
   onGoToDashboard,
   onOpenLogin,
+  onOpenNews,
 }) {
   // State Navigasi Tab (Beranda vs Katalog OPAC)
   const [activeTab, setActiveTab] = useState("home");
@@ -349,12 +350,13 @@ export default function Catalog({
                 )}
               </div>
 
-              <a
-                href="#footer"
+              <button
+                type="button"
+                onClick={onOpenNews}
                 className="flex items-center cursor-pointer transition pb-1 hover:text-amber-500"
               >
                 Berita & Info
-              </a>
+              </button>
             </nav>
 
             {/* ACTION BUTTON DESKTOP (Hidden di Mobile) */}
@@ -456,13 +458,16 @@ export default function Catalog({
                 Layanan Perpustakaan
               </button>
 
-              <a
-                href="#footer"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition"
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  if (onOpenNews) onOpenNews();
+                }}
+                className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition"
               >
                 Berita & Info
-              </a>
+              </button>
 
               {/* DASHBOARD / LOGIN BUTTON DALAM MENU MOBILE */}
               <div className="pt-2 border-t border-slate-800">
@@ -510,7 +515,10 @@ export default function Catalog({
         {/* RENDER KONTEN BERDASARKAN TAB YANG AKTIF */}
         {activeTab === "home" ? (
           <main className="w-full">
-            <Home onNavigateToCatalog={() => setActiveTab("catalog")} />
+            <Home
+              onNavigateToCatalog={() => setActiveTab("catalog")}
+              onNavigateToNews={onOpenNews}
+            />
           </main>
         ) : (
           <>

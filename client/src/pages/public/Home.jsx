@@ -14,9 +14,10 @@ import {
   Instagram,
   Youtube,
   Video,
+  ArrowRight,
 } from "lucide-react";
 
-export default function Home({ onNavigateToCatalog }) {
+export default function Home({ onNavigateToCatalog, onNavigateToNews }) {
   // State Slider Hero Banner
   const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -56,7 +57,7 @@ export default function Home({ onNavigateToCatalog }) {
       .catch(() => setStudentWorks(dummyWorks))
       .finally(() => setLoadingModules(false));
 
-    // 3. Fetch Data Tim Pustakawan (Dinamis dari Backend API)
+    // 3. Fetch Data Tim Pustakawan
     fetch("http://localhost:5000/api/librarians")
       .then((res) => res.json())
       .then((data) => {
@@ -96,6 +97,30 @@ export default function Home({ onNavigateToCatalog }) {
         "Permohonan bebas pinjam buku untuk syarat kelulusan kini dapat diajukan secara daring...",
       category: "Layanan",
     },
+    {
+      id: 4,
+      date: "05 Agustus 2026",
+      title: "Pemberian Penghargaan Pemustaka Teraktif Bulan Ini",
+      excerpt:
+        "Apresiasi bagi siswa-siswi yang paling rajin meminjam dan membaca koleksi buku perpustakaan...",
+      category: "Kegiatan",
+    },
+    {
+      id: 5,
+      date: "20 Juli 2026",
+      title: "Pembaruan Fasilitas Ruang Baca Karawitan dan Seni Teater",
+      excerpt:
+        "Ruang baca kini dilengkapi audio player pendukung latihan seni musik dan dialog teater...",
+      category: "Fasilitas",
+    },
+    {
+      id: 6,
+      date: "12 Juli 2026",
+      title: "Workshop Pengolahan Arsip Digital Karya Seni Pertunjukan",
+      excerpt:
+        "Pelatihan dokumentasi naskah drama dan koreografi tari berbasis media digital...",
+      category: "Pengumuman",
+    },
   ];
 
   const dummyWorks = [
@@ -119,7 +144,6 @@ export default function Home({ onNavigateToCatalog }) {
     },
   ];
 
-  // Data Dummy Staf Pustakawan Fallback
   const dummyStaff = [
     { name: "Hj. Ratna Sari, M.Pd", role: "Kepala Perpustakaan" },
     { name: "Ahmad Subagja, S.IP", role: "Layanan Pemustaka" },
@@ -127,7 +151,6 @@ export default function Home({ onNavigateToCatalog }) {
     { name: "Siti Aminah", role: "Administrasi & Sirkulasi" },
   ];
 
-  // Data 4 Banner Slide
   const heroSlides = [
     {
       id: 1,
@@ -166,7 +189,6 @@ export default function Home({ onNavigateToCatalog }) {
     },
   ];
 
-  // Efek Transisi Otomatis (Setiap 5 Detik)
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) =>
@@ -185,7 +207,6 @@ export default function Home({ onNavigateToCatalog }) {
     setCurrentSlide((prev) => (prev === heroSlides.length - 1 ? 0 : prev + 1));
   };
 
-  // Quick Links Layanan Utama
   const quickLinks = [
     {
       title: "Katalog Online (OPAC)",
@@ -217,7 +238,6 @@ export default function Home({ onNavigateToCatalog }) {
     },
   ];
 
-  // Data Dummy Koleksi Terpopuler
   const popularBooks = [
     {
       title: "Modul Pembelajaran Seni Tari Tradisional",
@@ -241,6 +261,15 @@ export default function Home({ onNavigateToCatalog }) {
     },
   ];
 
+  // Handler Navigasi Halaman Berita
+  const handleGoToNews = () => {
+    if (onNavigateToNews) {
+      onNavigateToNews();
+    } else {
+      window.location.href = "/news";
+    }
+  };
+
   return (
     <div className="w-full animate-fade-in text-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 space-y-10 sm:space-y-16">
@@ -255,7 +284,6 @@ export default function Home({ onNavigateToCatalog }) {
                   : "opacity-0 z-0 pointer-events-none"
               }`}
             >
-              {/* Gambar Latar Belakang Overlay Dark Blur */}
               <div
                 className="absolute inset-0 bg-cover bg-center transition-transform duration-10000 scale-105"
                 style={{ backgroundImage: `url(${slide.bgImage})` }}
@@ -263,7 +291,6 @@ export default function Home({ onNavigateToCatalog }) {
                 <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px]"></div>
               </div>
 
-              {/* Konten Teks Slide */}
               <div className="max-w-4xl mx-auto text-center space-y-3 sm:space-y-5 px-4 sm:px-6 relative z-20">
                 <span
                   className={`inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider backdrop-blur-sm border ${
@@ -286,7 +313,6 @@ export default function Home({ onNavigateToCatalog }) {
             </div>
           ))}
 
-          {/* Tombol Navigasi Kiri & Kanan Carousel */}
           <button
             onClick={prevSlide}
             className="absolute left-2 sm:left-4 z-30 p-1.5 sm:p-2.5 rounded-full bg-slate-900/40 hover:bg-slate-900/80 text-white backdrop-blur-md transition border border-white/10 cursor-pointer"
@@ -303,7 +329,6 @@ export default function Home({ onNavigateToCatalog }) {
             <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
-          {/* Dots Indikator Slide */}
           <div className="absolute bottom-4 sm:bottom-5 inset-x-0 z-30 flex justify-center items-center gap-1.5 sm:gap-2">
             {heroSlides.map((_, idx) => (
               <button
@@ -319,7 +344,7 @@ export default function Home({ onNavigateToCatalog }) {
           </div>
         </section>
 
-        {/* 2. QUICK ACCESS LAYANAN (4 ICON CIRCLE) */}
+        {/* 2. QUICK ACCESS LAYANAN */}
         <section id="layanan" className="max-w-7xl mx-auto">
           <div className="text-center mb-6 sm:mb-8">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold font-heading text-slate-900">
@@ -363,7 +388,6 @@ export default function Home({ onNavigateToCatalog }) {
         {/* 3. KOLEKSI TERPOPULER & MODUL KEJURUAN */}
         <section className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-            {/* Kolom Kiri: Koleksi Terpopuler */}
             <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 sm:pb-4">
                 <h3 className="font-bold text-sm sm:text-base text-slate-900 flex items-center gap-2">
@@ -373,7 +397,7 @@ export default function Home({ onNavigateToCatalog }) {
 
                 <button
                   onClick={onNavigateToCatalog}
-                  className="text-xs text-amber-600 font-bold hover:underline flex items-center gap-1 shrink-0"
+                  className="text-xs text-amber-600 font-bold hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
                 >
                   Lihat Semua <ChevronRight className="w-4 h-4" />
                 </button>
@@ -408,7 +432,6 @@ export default function Home({ onNavigateToCatalog }) {
               </ul>
             </div>
 
-            {/* Kolom Kanan: Modul & Karya Akhir Siswa (DINAMIS FROM API) */}
             <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 sm:pb-4">
                 <h3 className="font-bold text-sm sm:text-base text-slate-900 flex items-center gap-2">
@@ -449,9 +472,9 @@ export default function Home({ onNavigateToCatalog }) {
           </div>
         </section>
 
-        {/* 4. BERITA PERPUSTAKAAN (DINAMIS FROM API) */}
+        {/* 4. BERITA & PENGUMUMAN (DI-LIMIT 6 ITEM + TOMBOL DIRECT) */}
         <section className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 sm:mb-8">
             <div>
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold font-heading text-slate-900">
                 Berita & Pengumuman
@@ -461,16 +484,26 @@ export default function Home({ onNavigateToCatalog }) {
                 Informasi kegiatan literasi dan kabar perpustakaan SMKN 74
               </p>
             </div>
+
+            {/* Tombol Lihat Berita Lainnya */}
+            <button
+              onClick={handleGoToNews}
+              className="inline-flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 px-4 py-2.5 rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer self-start sm:self-auto group"
+            >
+              <span>Lihat Berita Lainnya</span>
+              <ArrowRight className="w-4 h-4 text-amber-700 group-hover:translate-x-1 transition-transform" />
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
-            {newsList.map((news) => (
+            {/* .slice(0, 6) Membatasi berita menjadi 6 item */}
+            {newsList.slice(0, 6).map((news) => (
               <div
                 key={news.id}
-                className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-md transition space-y-3 p-4 sm:p-5 flex flex-col justify-between"
+                className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-md transition space-y-3 p-4 sm:p-5 flex flex-col justify-between group"
               >
                 <div className="space-y-3">
-                  <div className="h-36 sm:h-40 bg-slate-100 rounded-xl flex flex-col items-center justify-center text-slate-400 border border-slate-200/50 overflow-hidden">
+                  <div className="h-36 sm:h-40 bg-slate-100 rounded-xl flex flex-col items-center justify-center text-slate-400 border border-slate-200/50 overflow-hidden relative">
                     {news.image ? (
                       <img
                         src={
@@ -479,7 +512,7 @@ export default function Home({ onNavigateToCatalog }) {
                             : `http://localhost:5000/uploads/${news.image}`
                         }
                         alt={news.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                       />
                     ) : (
                       <>
@@ -504,7 +537,7 @@ export default function Home({ onNavigateToCatalog }) {
                     </span>
                   </div>
 
-                  <h3 className="font-bold text-sm sm:text-base text-slate-900 line-clamp-2">
+                  <h3 className="font-bold text-sm sm:text-base text-slate-900 line-clamp-2 group-hover:text-amber-600 transition">
                     {news.title}
                   </h3>
 
@@ -513,7 +546,10 @@ export default function Home({ onNavigateToCatalog }) {
                   </p>
                 </div>
 
-                <button className="text-xs text-amber-600 font-bold hover:underline pt-2 flex items-center gap-1 cursor-pointer">
+                <button
+                  onClick={handleGoToNews}
+                  className="text-xs text-amber-600 font-bold hover:underline pt-2 flex items-center gap-1 cursor-pointer"
+                >
                   Baca Selengkapnya <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -521,7 +557,7 @@ export default function Home({ onNavigateToCatalog }) {
           </div>
         </section>
 
-        {/* 5. STAF PERPUSTAKAAN / TIM PUSTAKAWAN (DINAMIS FROM API) */}
+        {/* 5. STAF PERPUSTAKAAN / TIM PUSTAKAWAN */}
         <section className="max-w-7xl mx-auto text-center">
           <div className="mb-6 sm:mb-8">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold font-heading text-slate-900">
@@ -568,7 +604,6 @@ export default function Home({ onNavigateToCatalog }) {
       <footer className="w-full bg-[var(--color-brand-primary,#0b1329)] text-slate-300 pt-10 sm:pt-14 pb-8 border-t border-slate-800 font-sans mt-12 sm:mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 sm:gap-10 pb-10 sm:pb-12 border-b border-slate-800/80">
-            {/* KOLOM 1: TENTANG PERPUSTAKAAN */}
             <div className="md:col-span-2 space-y-4 pr-0 md:pr-6">
               <div className="flex items-center space-x-3">
                 <img
@@ -596,7 +631,6 @@ export default function Home({ onNavigateToCatalog }) {
                 pemustaka.
               </p>
 
-              {/* Badge Instansi */}
               <div className="flex flex-wrap gap-2 pt-1">
                 <span className="px-2.5 py-1 text-[10px] sm:text-xs font-bold text-amber-400 border border-amber-500/30 rounded-md tracking-wider uppercase bg-amber-500/10">
                   PERPUSTAKAAN SEKOLAH
@@ -608,7 +642,6 @@ export default function Home({ onNavigateToCatalog }) {
               </div>
             </div>
 
-            {/* KOLOM 2: INFORMASI PERPUSTAKAAN */}
             <div className="space-y-3">
               <h4 className="text-xs font-bold tracking-widest text-amber-500 uppercase">
                 INFORMASI
@@ -648,7 +681,6 @@ export default function Home({ onNavigateToCatalog }) {
               </div>
             </div>
 
-            {/* KOLOM 3: LINK TERKAIT */}
             <div className="space-y-3">
               <h4 className="text-xs font-bold tracking-widest text-amber-500 uppercase">
                 LINK TERKAIT
@@ -702,7 +734,6 @@ export default function Home({ onNavigateToCatalog }) {
             </div>
           </div>
 
-          {/* BOTTOM BAR */}
           <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4 text-center sm:text-left">
             <p>© 2026 Perpustakaan SMKN 74 Jakarta. All rights reserved.</p>
 

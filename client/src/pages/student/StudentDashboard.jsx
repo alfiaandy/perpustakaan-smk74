@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import logo74 from "../../assets/logo74.png";
 import API from "../../services/api";
+import StudentCard from "./StudentCard";
 import {
   User,
   LogOut,
@@ -11,6 +12,7 @@ import {
   AlertCircle,
   BookmarkCheck,
   Loader2,
+  CreditCard,
 } from "lucide-react";
 
 export default function StudentDashboard({ user, onLogout, onGoToCatalog }) {
@@ -130,12 +132,14 @@ export default function StudentDashboard({ user, onLogout, onGoToCatalog }) {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold font-heading text-slate-900">
-                {user?.full_name || "Nama Siswa"}
+                {user?.full_name || user?.name || "Nama Siswa"}
               </h1>
               <p className="text-sm text-slate-500 mt-1 flex items-center gap-2">
                 <span>
                   NISN:{" "}
-                  <strong className="text-slate-700">{user?.username}</strong>
+                  <strong className="text-slate-700">
+                    {user?.username || user?.nisn}
+                  </strong>
                 </span>
                 <span>•</span>
                 <span className="capitalize text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 text-xs">
@@ -153,6 +157,17 @@ export default function StudentDashboard({ user, onLogout, onGoToCatalog }) {
             <LogOut className="w-4 h-4" />
             <span>Keluar Akun (Logout)</span>
           </button>
+        </div>
+
+        {/* SECTION KARTU ANGGOTA PERPUSTAKAAN DIGITAL */}
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 md:p-8 space-y-4">
+          <div className="flex items-center space-x-2 border-b border-slate-100 pb-4">
+            <CreditCard className="w-5 h-5 text-amber-600" />
+            <h2 className="text-xl font-bold font-heading text-slate-900">
+              Kartu Anggota Digital Siswa
+            </h2>
+          </div>
+          <StudentCard user={user} />
         </div>
 
         {/* STATISTIK CARDS */}

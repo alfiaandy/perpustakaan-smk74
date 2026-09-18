@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "https://96dvzmmt-5000.asse.devtunnels.ms/api",
 });
 
 // 1. Sisipkan Token ke Setiap Request

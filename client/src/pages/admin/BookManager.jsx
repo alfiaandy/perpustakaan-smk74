@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   X,
   Image as ImageIcon,
+  ChevronRight,
 } from "lucide-react";
 
 export default function BookManager() {
@@ -18,6 +19,10 @@ export default function BookManager() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
+  // --- STATE PAGINASI (MAX 10 LIST PER HALAMAN) ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // State Foto Sampul & Preview
   const [coverFile, setCoverFile] = useState(null);
@@ -71,6 +76,26 @@ export default function BookManager() {
     fetchCategories();
   }, []);
 
+  // Reset ke halaman 1 setiap kali search berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  // --- LOGIKA PERHITUNGAN PAGINASI ---
+  const totalItems = books.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentBooks = books.slice(indexOfFirstItem, indexOfLastItem);
+
+  const startResult = totalItems === 0 ? 0 : indexOfFirstItem + 1;
+  const endResult = Math.min(indexOfLastItem, totalItems);
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
   // Handle Pilih File Foto Sampul
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -95,7 +120,7 @@ export default function BookManager() {
     data.append("available_stock", formData.total_stock);
     data.append("rack_location", formData.rack_location);
     data.append("category_id", formData.category_id);
-    data.append("description", formData.description); // <-- Tambahkan ini
+    data.append("description", formData.description);
     if (coverFile) {
       data.append("cover_image", coverFile);
     }
@@ -217,7 +242,7 @@ export default function BookManager() {
             resetForm();
             setIsModalOpen(true);
           }}
-          className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center shadow-md cursor-pointer transition"
+          className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center shadow-xs cursor-pointer transition"
         >
           <Plus className="w-4 h-4 mr-1.5" /> Tambah Buku
         </button>
@@ -228,7 +253,7 @@ export default function BookManager() {
         <input
           type="text"
           placeholder="Cari judul, penulis, ISBN..."
-          className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-amber-600 shadow-sm"
+          className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-amber-600 shadow-xs"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -236,87 +261,131 @@ export default function BookManager() {
       </div>
 
       {/* Table Buku */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
-            <tr>
-              <th className="p-4">Sampul</th>
-              <th className="p-4">ISBN</th>
-              <th className="p-4">Judul Buku</th>
-              <th className="p-4">Kategori</th>
-              <th className="p-4">Penulis</th>
-              <th className="p-4">Stok (Tersedia / Total)</th>
-              <th className="p-4">Lokasi Rak</th>
-              <th className="p-4 text-center">Aksi</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-slate-700">
-            {loading ? (
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
               <tr>
-                <td colSpan="8" className="p-8 text-center text-slate-400">
-                  Memuat data buku...
-                </td>
+                <th className="p-4">Sampul</th>
+                <th className="p-4">ISBN</th>
+                <th className="p-4">Judul Buku</th>
+                <th className="p-4">Kategori</th>
+                <th className="p-4">Penulis</th>
+                <th className="p-4">Stok (Tersedia / Total)</th>
+                <th className="p-4">Lokasi Rak</th>
+                <th className="p-4 text-center">Aksi</th>
               </tr>
-            ) : books.length === 0 ? (
-              <tr>
-                <td colSpan="8" className="p-8 text-center text-slate-400">
-                  Tidak ada koleksi buku yang ditemukan.
-                </td>
-              </tr>
-            ) : (
-              books.map((b) => (
-                <tr key={b.id} className="hover:bg-slate-50/80 transition">
-                  <td className="p-4">
-                    {b.cover_image ? (
-                      <img
-                        src={`http://localhost:5000/uploads/${b.cover_image}`}
-                        alt={b.title}
-                        className="w-10 h-14 object-cover rounded-lg border border-slate-200"
-                      />
-                    ) : (
-                      <div className="w-10 h-14 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200 text-slate-400">
-                        <ImageIcon className="w-5 h-5" />
-                      </div>
-                    )}
-                  </td>
-                  <td className="p-4 font-mono text-slate-600">
-                    {b.isbn || "-"}
-                  </td>
-                  <td className="p-4 font-bold text-slate-900">{b.title}</td>
-                  <td className="p-4 font-semibold text-amber-700">
-                    {b.category_name || b.category || "-"}
-                  </td>
-                  <td className="p-4 text-slate-600">{b.author}</td>
-                  <td className="p-4 font-semibold">
-                    <span className="text-emerald-600">
-                      {b.available_stock ?? b.total_stock}
-                    </span>{" "}
-                    / {b.total_stock}
-                  </td>
-                  <td className="p-4 text-slate-600">
-                    {b.rack_location || "-"}
-                  </td>
-                  <td className="p-4 text-center space-x-2">
-                    <button
-                      onClick={() => handleEdit(b)}
-                      className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition cursor-pointer inline-flex items-center"
-                      title="Edit Buku"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => openDeleteModal(b.id, b.title)}
-                      className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition cursor-pointer inline-flex items-center"
-                      title="Hapus Buku"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {loading ? (
+                <tr>
+                  <td colSpan="8" className="p-8 text-center text-slate-400">
+                    Memuat data buku...
                   </td>
                 </tr>
-              ))
+              ) : books.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="p-8 text-center text-slate-400">
+                    Tidak ada koleksi buku yang ditemukan.
+                  </td>
+                </tr>
+              ) : (
+                currentBooks.map((b) => (
+                  <tr key={b.id} className="hover:bg-slate-50/80 transition">
+                    <td className="p-4">
+                      {b.cover_image ? (
+                        <img
+                          src={`http://localhost:5000/uploads/${b.cover_image}`}
+                          alt={b.title}
+                          className="w-10 h-14 object-cover rounded-lg border border-slate-200"
+                        />
+                      ) : (
+                        <div className="w-10 h-14 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200 text-slate-400">
+                          <ImageIcon className="w-5 h-5" />
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-4 font-mono text-slate-600">
+                      {b.isbn || "-"}
+                    </td>
+                    <td className="p-4 font-bold text-slate-900">{b.title}</td>
+                    <td className="p-4 font-semibold text-amber-700">
+                      {b.category_name || b.category || "-"}
+                    </td>
+                    <td className="p-4 text-slate-600">{b.author}</td>
+                    <td className="p-4 font-semibold">
+                      <span className="text-emerald-600">
+                        {b.available_stock ?? b.total_stock}
+                      </span>{" "}
+                      / {b.total_stock}
+                    </td>
+                    <td className="p-4 text-slate-600">
+                      {b.rack_location || "-"}
+                    </td>
+                    <td className="p-4 text-center space-x-2">
+                      <button
+                        onClick={() => handleEdit(b)}
+                        className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition cursor-pointer inline-flex items-center"
+                        title="Edit Buku"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => openDeleteModal(b.id, b.title)}
+                        className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition cursor-pointer inline-flex items-center"
+                        title="Hapus Buku"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* FOOTER TABEL & PAGINASI */}
+        {!loading && totalItems > 0 && (
+          <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
+            <p className="text-xs text-slate-500 font-medium">
+              Menampilkan {startResult} - {endResult} dari {totalItems} Judul
+              Buku
+            </p>
+
+            {totalPages > 1 && (
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`w-8 h-8 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center ${
+                        currentPage === page
+                          ? "bg-amber-600 text-white shadow-xs"
+                          : "bg-white text-slate-700 border border-slate-200 hover:bg-amber-50 hover:text-amber-700"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ),
+                )}
+
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  className={`px-3 h-8 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer border ${
+                    currentPage === totalPages
+                      ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                      : "bg-white text-amber-700 border-slate-200 hover:bg-amber-50"
+                  }`}
+                >
+                  Next <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             )}
-          </tbody>
-        </table>
+          </div>
+        )}
       </div>
 
       {/* MODAL FORM TAMBAH/EDIT BUKU */}
@@ -522,7 +591,7 @@ export default function BookManager() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold transition shadow-md shadow-amber-200 cursor-pointer"
+                  className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold transition shadow-xs cursor-pointer"
                 >
                   Simpan Data
                 </button>
@@ -571,7 +640,7 @@ export default function BookManager() {
               <button
                 type="button"
                 onClick={confirmDelete}
-                className="w-1/2 py-3 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl text-xs transition shadow-md shadow-rose-200 cursor-pointer"
+                className="w-1/2 py-3 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl text-xs transition shadow-xs cursor-pointer"
               >
                 Ya, Hapus
               </button>

@@ -40,7 +40,41 @@ exports.getBooks = async (req, res) => {
   }
 };
 
-// 2. Tambah Buku Baru (Create)
+// 2. Ambil Detail 1 Buku Berdasarkan ID
+exports.getBookById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const query = `
+      SELECT b.*, c.name as category_name 
+      FROM books b 
+      LEFT JOIN categories c ON b.category_id = c.id 
+      WHERE b.id = ?
+    `;
+    const [rows] = await db.query(query, [id]);
+
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Buku tidak ditemukan" });
+    }
+
+    res.json({ success: true, data: rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 3. Ambil Semua Kategori Buku (Untuk Filter & Form Tambah Buku)
+exports.getCategories = async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT * FROM categories ORDER BY name ASC");
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 4. Tambah Buku Baru (Create)
 exports.createBook = async (req, res) => {
   try {
     const {
@@ -92,7 +126,7 @@ exports.createBook = async (req, res) => {
   }
 };
 
-// 3. Update Data Buku (Update)
+// 5. Update Data Buku (Update)
 exports.updateBook = async (req, res) => {
   try {
     const { id } = req.params;
@@ -153,7 +187,7 @@ exports.updateBook = async (req, res) => {
   }
 };
 
-// 4. Hapus Data Buku (Delete)
+// 6. Hapus Data Buku (Delete)
 exports.deleteBook = async (req, res) => {
   try {
     const { id } = req.params;

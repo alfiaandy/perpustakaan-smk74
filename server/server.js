@@ -34,7 +34,10 @@ app.use("/api/loans", require("./routes/loanRoutes"));
 // ROUTE BERITA, MODUL DIGITAL, & TIM PUSTAKAWAN
 app.use("/api/news", require("./routes/newsRoutes"));
 app.use("/api/modules", require("./routes/moduleRoutes"));
-app.use("/api/librarians", require("./routes/librarianRoutes")); // <-- Route Tim Pustakawan Ditambahkan
+app.use("/api/librarians", require("./routes/librarianRoutes"));
+
+// Route Visitor Logs
+app.use("/api/visitor-logs", require("./routes/visitorLogRoutes"));
 
 // 5. Base Route Test
 app.get("/", (req, res) => {

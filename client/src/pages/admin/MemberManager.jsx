@@ -8,6 +8,7 @@ import {
   AlertCircle,
   AlertTriangle,
   X,
+  ChevronRight,
 } from "lucide-react";
 
 export default function MemberManager() {
@@ -15,6 +16,10 @@ export default function MemberManager() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // --- STATE PAGINASI (MAX 10 LIST PER HALAMAN) ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // State Modal Konfirmasi Hapus
   const [deleteModal, setDeleteModal] = useState({
@@ -41,6 +46,11 @@ export default function MemberManager() {
   useEffect(() => {
     fetchMembers();
   }, []);
+
+  // Reset ke halaman 1 setiap kali search berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   // Buka Pop-up Hapus
   const openDeleteModal = (id, name) => {
@@ -75,11 +85,30 @@ export default function MemberManager() {
     }
   };
 
+  // Filter Data Berdasarkan Kata Kunci Pencarian
   const filteredMembers = members.filter(
     (m) =>
       m.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       m.username?.toLowerCase().includes(search.toLowerCase()),
   );
+
+  // --- LOGIKA PERHITUNGAN PAGINASI ---
+  const totalItems = filteredMembers.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentMembers = filteredMembers.slice(
+    indexOfFirstItem,
+    indexOfLastItem,
+  );
+
+  const startResult = totalItems === 0 ? 0 : indexOfFirstItem + 1;
+  const endResult = Math.min(indexOfLastItem, totalItems);
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
 
   return (
     <div className="space-y-6 relative">
@@ -106,7 +135,7 @@ export default function MemberManager() {
           <input
             type="text"
             placeholder="Cari nama atau NISN..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-amber-600 shadow-sm"
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-amber-600 shadow-xs"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -121,60 +150,108 @@ export default function MemberManager() {
       )}
 
       {/* Table Data Siswa */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
-            <tr>
-              <th className="p-4 w-16">No</th>
-              <th className="p-4">Nama Lengkap</th>
-              <th className="p-4">NISN / Username</th>
-              <th className="p-4">Role</th>
-              <th className="p-4 text-center w-24">Aksi</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-slate-700">
-            {loading ? (
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
               <tr>
-                <td colSpan="5" className="p-8 text-center text-slate-400">
-                  Memuat data anggota...
-                </td>
+                <th className="p-4 w-16">No</th>
+                <th className="p-4">Nama Lengkap</th>
+                <th className="p-4">NISN / Username</th>
+                <th className="p-4">Role</th>
+                <th className="p-4 text-center w-24">Aksi</th>
               </tr>
-            ) : filteredMembers.length === 0 ? (
-              <tr>
-                <td colSpan="5" className="p-8 text-center text-slate-400">
-                  Tidak ada data anggota siswa yang ditemukan.
-                </td>
-              </tr>
-            ) : (
-              filteredMembers.map((m, index) => (
-                <tr key={m.id} className="hover:bg-slate-50/80 transition">
-                  <td className="p-4 font-semibold text-slate-400">
-                    {index + 1}
-                  </td>
-                  <td className="p-4 font-bold text-slate-900 capitalize">
-                    {m.full_name}
-                  </td>
-                  <td className="p-4 font-mono text-slate-600">{m.username}</td>
-                  <td className="p-4">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/60">
-                      <ShieldCheck className="w-3 h-3 mr-1 text-amber-600" />{" "}
-                      Siswa
-                    </span>
-                  </td>
-                  <td className="p-4 text-center">
-                    <button
-                      onClick={() => openDeleteModal(m.id, m.full_name)}
-                      className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition cursor-pointer inline-flex items-center"
-                      title="Hapus Anggota"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {loading ? (
+                <tr>
+                  <td colSpan="5" className="p-8 text-center text-slate-400">
+                    Memuat data anggota...
                   </td>
                 </tr>
-              ))
+              ) : filteredMembers.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="p-8 text-center text-slate-400">
+                    Tidak ada data anggota siswa yang ditemukan.
+                  </td>
+                </tr>
+              ) : (
+                currentMembers.map((m, index) => (
+                  <tr
+                    key={m.id || index}
+                    className="hover:bg-slate-50/80 transition"
+                  >
+                    <td className="p-4 font-semibold text-slate-400">
+                      {indexOfFirstItem + index + 1}
+                    </td>
+                    <td className="p-4 font-bold text-slate-900 capitalize">
+                      {m.full_name}
+                    </td>
+                    <td className="p-4 font-mono text-slate-600">
+                      {m.username}
+                    </td>
+                    <td className="p-4">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/60">
+                        <ShieldCheck className="w-3 h-3 mr-1 text-amber-600" />{" "}
+                        Siswa
+                      </span>
+                    </td>
+                    <td className="p-4 text-center">
+                      <button
+                        onClick={() => openDeleteModal(m.id, m.full_name)}
+                        className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition cursor-pointer inline-flex items-center"
+                        title="Hapus Anggota"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* FOOTER TABEL & PAGINASI */}
+        {!loading && totalItems > 0 && (
+          <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
+            <p className="text-xs text-slate-500 font-medium">
+              Menampilkan {startResult} - {endResult} dari {totalItems} Siswa
+            </p>
+
+            {totalPages > 1 && (
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`w-8 h-8 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center ${
+                        currentPage === page
+                          ? "bg-amber-600 text-white shadow-xs"
+                          : "bg-white text-slate-700 border border-slate-200 hover:bg-amber-50 hover:text-amber-700"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ),
+                )}
+
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  className={`px-3 h-8 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer border ${
+                    currentPage === totalPages
+                      ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                      : "bg-white text-amber-700 border-slate-200 hover:bg-amber-50"
+                  }`}
+                >
+                  Next <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             )}
-          </tbody>
-        </table>
+          </div>
+        )}
       </div>
 
       {/* MODAL POP-UP KONFIRMASI HAPUS */}
@@ -220,7 +297,7 @@ export default function MemberManager() {
               <button
                 type="button"
                 onClick={confirmDelete}
-                className="w-1/2 py-3 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl text-xs transition shadow-md shadow-rose-200 cursor-pointer"
+                className="w-1/2 py-3 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl text-xs transition shadow-xs cursor-pointer"
               >
                 Ya, Hapus
               </button>
