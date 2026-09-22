@@ -31,9 +31,18 @@ export default function App() {
 
   // Handler Login Berhasil
   const handleLoginSuccess = (userData) => {
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
-    if (userData.role === "admin" || userData.role === "pustakawan") {
+    // Pastikan properti class terpetakan dengan lengkap
+    const formattedUser = {
+      ...userData,
+      class: userData.class || userData.class_major || userData.kelas || "",
+      class_major:
+        userData.class || userData.class_major || userData.kelas || "",
+      kelas: userData.class || userData.class_major || userData.kelas || "",
+    };
+
+    setUser(formattedUser);
+    localStorage.setItem("user", JSON.stringify(formattedUser));
+    if (formattedUser.role === "admin" || formattedUser.role === "pustakawan") {
       setCurrentPage("dashboard");
     } else {
       setCurrentPage("catalog");
@@ -101,6 +110,7 @@ export default function App() {
     return (
       <StudentDashboard
         user={user}
+        setUser={setUser}
         onUserUpdated={handleUserUpdated}
         onLogout={handleLogout}
         onGoToCatalog={() => setCurrentPage("catalog")}

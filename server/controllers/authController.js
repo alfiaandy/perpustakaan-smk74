@@ -52,17 +52,20 @@ exports.login = async (req, res) => {
       });
     }
 
+    // Sertakan data class di dalam token JWT
     const token = jwt.sign(
       {
         id: user.id,
         username: user.username,
         role: user.role,
         full_name: user.full_name,
+        class: user.class || "",
       },
       JWT_SECRET,
       { expiresIn: "1d" },
     );
 
+    // Sertakan data class dan aliasnya di dalam response user
     res.json({
       success: true,
       message: "Login berhasil!",
@@ -72,6 +75,9 @@ exports.login = async (req, res) => {
         username: user.username,
         full_name: user.full_name,
         role: user.role,
+        class: user.class || "",
+        class_major: user.class || "",
+        kelas: user.class || "",
       },
     });
   } catch (error) {
@@ -243,5 +249,12 @@ exports.forgotPassword = async (req, res) => {
 
 // 4. Get Current User (Cek Sesi Active)
 exports.getMe = async (req, res) => {
-  res.json({ success: true, user: req.user });
+  res.json({
+    success: true,
+    user: {
+      ...req.user,
+      class_major: req.user?.class || "",
+      kelas: req.user?.class || "",
+    },
+  });
 };

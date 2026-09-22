@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import API from "../../services/api";
+import { Html5Qrcode } from "html5-qrcode";
 import {
   ArrowLeftRight,
   Plus,
@@ -12,6 +13,12 @@ import {
   AlertCircle,
   Image as ImageIcon,
   HelpCircle,
+  QrCode,
+  CalendarPlus,
+  Filter,
+  DollarSign,
+  AlertTriangle,
+  Camera,
 } from "lucide-react";
 
 export default function LoanManager() {
@@ -21,7 +28,16 @@ export default function LoanManager() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("pending"); // 'pending' | 'all'
+  const [statusFilter, setStatusFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Modal Validasi Penyerahan Buku / Quick Code & Camera State
+  const [scanModalOpen, setScanModalOpen] = useState(false);
+  const [inputTransactionCode, setInputTransactionCode] = useState("");
+  const [useCamera, setUseCamera] = useState(false);
+
+  // Ref Pengunci Scan Agar Tidak Kebaca Berulang Kali
+  const isScanningRef = useRef(false);
 
   // Form State Pinjam Langsung
   const [formData, setFormData] = useState({
@@ -30,16 +46,16 @@ export default function LoanManager() {
     loan_days: 7,
   });
 
-  // State Pop Box Konfirmasi Aksi (Setujui, Tolak, Kembalikan)
+  // State Pop Box Konfirmasi Aksi
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     title: "",
     message: "",
-    type: "approve", // 'approve' | 'reject' | 'return'
+    type: "approve",
     actionData: null,
   });
 
-  // State Pop Box Notifikasi Respon (Sukses / Error)
+  // State Pop Box Notifikasi
   const [alertModal, setAlertModal] = useState({
     isOpen: false,
     title: "",
@@ -70,40 +86,185 @@ export default function LoanManager() {
     fetchData();
   }, []);
 
-  // 1. Trigger Pop Box Persetujuan
+  // Effect Kamera Scanner HTML5 QR Code (Dengan Jeda & Debounce)
+  useEffect(() => {
+    let html5QrCode = null;
+    isScanningRef.current = false;
+
+    if (scanModalOpen && useCamera) {
+      // Jeda 600ms agar kamera siap dan memunculkan pop-up izin browser
+      const timer = setTimeout(() => {
+        html5QrCode = new Html5Qrcode("reader");
+
+        // Set FPS lebih rendah (5 fps) agar kamera tidak terlalu agresif/terlalu cepat membaca
+        const config = { fps: 5, qrbox: { width: 220, height: 220 } };
+
+        html5QrCode
+          .start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => {
+              // Pengunci agar hanya memproses 1 kali scan
+              if (isScanningRef.current) return;
+              isScanningRef.current = true;
+
+              // Berhentikan scanner terlebih dahulu sebelum eksekusi hasil
+              html5QrCode
+                .stop()
+                .then(() => {
+                  setUseCamera(false);
+                  setTimeout(() => {
+                    handleVerifyCode(decodedText);
+                  }, 300);
+                })
+                .catch((err) => console.error(err));
+            },
+            (errorMessage) => {
+              // Frame error saat tidak ada QR diabaikan
+            },
+          )
+          .catch((err) => {
+            console.error("Gagal membuka kamera:", err);
+            setUseCamera(false);
+          });
+      }, 600);
+
+      return () => {
+        clearTimeout(timer);
+        if (html5QrCode && html5QrCode.isScanning) {
+          html5QrCode.stop().catch((e) => console.error(e));
+        }
+      };
+    }
+  }, [scanModalOpen, useCamera]);
+
+  // Handler Verifikasi Kode Transaksi
+  const handleVerifyCode = (codeToVerify) => {
+    const code = codeToVerify || inputTransactionCode;
+    const cleanCode = code ? code.trim() : "";
+
+    if (!cleanCode) {
+      setAlertModal({
+        isOpen: true,
+        title: "Peringatan",
+        message: "Silakan masukkan atau scan kode transaksi terlebih dahulu.",
+        isError: true,
+      });
+      return;
+    }
+
+    const targetLoan = loans.find(
+      (item) =>
+        item.loan_code === cleanCode ||
+        `#${item.id}` === cleanCode ||
+        String(item.id) === cleanCode.replace("#", ""),
+    );
+
+    if (targetLoan) {
+      setScanModalOpen(false);
+      setUseCamera(false);
+      setInputTransactionCode("");
+      handleApproveClick(
+        targetLoan.id,
+        targetLoan.student_name,
+        targetLoan.book_title,
+      );
+    } else {
+      setAlertModal({
+        isOpen: true,
+        title: "Kode Tidak Ditemukan",
+        message: `Kode transaksi "${cleanCode}" tidak ditemukan atau statusnya sudah tidak aktif.`,
+        isError: true,
+      });
+    }
+  };
+
+  // Trigger Pop Box Persetujuan
   const handleApproveClick = (id, studentName, bookTitle) => {
     setConfirmModal({
       isOpen: true,
       title: "Konfirmasi Persetujuan",
-      message: `Setujui pengajuan peminjaman "${bookTitle}" oleh ${studentName}?`,
+      message: `Setujui pengajuan peminjaman "${bookTitle}" oleh ${studentName}? Buku akan diserahkan ke siswa.`,
       type: "approve",
       actionData: { id },
     });
   };
 
-  // 2. Trigger Pop Box Penolakan
+  // Trigger Pop Box Penolakan
   const handleRejectClick = (id, studentName) => {
     setConfirmModal({
       isOpen: true,
       title: "Konfirmasi Penolakan",
-      message: `Tolak pengajuan peminjaman oleh ${studentName}?`,
+      message: `Tolak pengajuan peminjaman oleh ${studentName}? Stok buku akan dikembalikan.`,
       type: "reject",
       actionData: { id },
     });
   };
 
-  // 3. Trigger Pop Box Pengembalian Buku
-  const handleReturnClick = (id, bookTitle, studentName) => {
+  // Trigger Pop Box Pengembalian Buku
+  const handleReturnClick = (loan) => {
     setConfirmModal({
       isOpen: true,
       title: "Konfirmasi Pengembalian",
-      message: `Proses pengembalian buku "${bookTitle}" oleh ${studentName}?`,
+      message: `Proses pengembalian buku "${loan.book_title}" oleh ${loan.student_name}?`,
       type: "return",
-      actionData: { id },
+      actionData: loan,
     });
   };
 
-  // Eksekusi Pilihan Pilihan dari Pop Box Konfirmasi
+  // Override Perpanjangan Manual oleh Admin
+  const handleOverrideExtend = async (loanId) => {
+    const extraDays = prompt(
+      "Masukkan jumlah hari perpanjangan tambahan:",
+      "7",
+    );
+    if (!extraDays) return;
+
+    try {
+      const res = await API.put(`/loans/${loanId}/admin-extend`, { extraDays });
+      if (res.data.success) {
+        setAlertModal({
+          isOpen: true,
+          title: "Perpanjangan Berhasil!",
+          message:
+            res.data.message ||
+            `Peminjaman berhasil diperpanjang ${extraDays} hari.`,
+          isError: false,
+        });
+        fetchData();
+      }
+    } catch (err) {
+      setAlertModal({
+        isOpen: true,
+        title: "Gagal Perpanjang",
+        message:
+          err.response?.data?.message || "Gagal memperpanjang masa pinjam.",
+        isError: true,
+      });
+    }
+  };
+
+  // Kalkulator Estimasi Denda Real-Time
+  const calculateFine = (dueDateStr, fineAmountFromDB) => {
+    if (fineAmountFromDB && Number(fineAmountFromDB) > 0) {
+      return Number(fineAmountFromDB);
+    }
+    if (!dueDateStr) return 0;
+
+    const dueDate = new Date(dueDateStr);
+    const today = new Date();
+    dueDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    if (today > dueDate) {
+      const diffTime = Math.abs(today - dueDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays * 1000;
+    }
+    return 0;
+  };
+
+  // Eksekusi Pilihan Konfirmasi
   const handleExecuteAction = async () => {
     const { type, actionData } = confirmModal;
     setConfirmModal({ ...confirmModal, isOpen: false });
@@ -128,21 +289,41 @@ export default function LoanManager() {
           setAlertModal({
             isOpen: true,
             title: "Pengajuan Ditolak",
-            message: "Pengajuan peminjaman berhasil dibatalkan.",
+            message:
+              "Pengajuan peminjaman berhasil dibatalkan dan stok dikembalikan.",
             isError: false,
           });
           fetchData();
         }
       } else if (type === "return") {
         const res = await API.put(`/loans/${actionData.id}/return`);
+
         if (res.data.success) {
-          if (res.data.fine_amount > 0) {
+          const fineAmount =
+            res.data.fine_amount || actionData.fine_amount || 0;
+
+          if (fineAmount > 0) {
+            try {
+              await API.post("/fines/pay", {
+                loan_id: actionData.id,
+                member_id: actionData.member_id || actionData.user_id,
+                payment_type: "late_fee",
+                amount: fineAmount,
+                notes: `Denda keterlambatan pengembalian buku "${actionData.book_title}"`,
+              });
+            } catch (fineErr) {
+              console.error(
+                "Gagal mencatat transaksi denda ke modul keuangan:",
+                fineErr,
+              );
+            }
+
             setAlertModal({
               isOpen: true,
               title: "Buku Dikembalikan (Terkena Denda)",
-              message: `Buku berhasil dikembalikan! Terkena denda keterlambatan: Rp ${res.data.fine_amount.toLocaleString(
-                "id-ID",
-              )}`,
+              message: `Buku berhasil dikembalikan! Denda keterlambatan sebesar Rp ${Number(
+                fineAmount,
+              ).toLocaleString("id-ID")} telah dicatat di Laporan Keuangan.`,
               isError: true,
             });
           } else {
@@ -166,7 +347,7 @@ export default function LoanManager() {
     }
   };
 
-  // Simpan Peminjaman Langsung di Tempat (Direct Issue)
+  // Simpan Peminjaman Langsung di Tempat
   const handleSubmitDirectLoan = async (e) => {
     e.preventDefault();
     try {
@@ -192,18 +373,54 @@ export default function LoanManager() {
     }
   };
 
-  const pendingLoans = loans.filter((l) => l.status === "menunggu_konfirmasi");
+  const pendingLoans = loans.filter(
+    (l) => l.status === "menunggu_konfirmasi" || l.status === "booking",
+  );
 
   const filteredLoans = loans
     .filter((l) =>
-      activeTab === "pending" ? l.status === "menunggu_konfirmasi" : true,
+      activeTab === "pending"
+        ? l.status === "menunggu_konfirmasi" || l.status === "booking"
+        : true,
     )
-    .filter(
-      (l) =>
-        l.student_name?.toLowerCase().includes(search.toLowerCase()) ||
-        l.book_title?.toLowerCase().includes(search.toLowerCase()) ||
-        l.student_nisn?.toLowerCase().includes(search.toLowerCase()),
-    );
+    .filter((l) => {
+      const isBorrowed = l.status === "dipinjam" || l.status === "borrowed";
+      const isOverdue =
+        isBorrowed && l.due_date && new Date(l.due_date) < new Date();
+
+      if (
+        statusFilter === "menunggu_konfirmasi" &&
+        l.status !== "menunggu_konfirmasi" &&
+        l.status !== "booking"
+      )
+        return false;
+      if (statusFilter === "dipinjam" && !isBorrowed) return false;
+      if (statusFilter === "terlambat" && !isOverdue) return false;
+      if (
+        statusFilter === "dikembalikan" &&
+        l.status !== "dikembalikan" &&
+        l.status !== "returned"
+      )
+        return false;
+      if (
+        statusFilter === "expired" &&
+        l.status !== "expired" &&
+        l.status !== "ditolak" &&
+        l.status !== "batal"
+      )
+        return false;
+      return true;
+    })
+    .filter((l) => {
+      const query = search.toLowerCase();
+      return (
+        l.student_name?.toLowerCase().includes(query) ||
+        l.book_title?.toLowerCase().includes(query) ||
+        l.student_nisn?.toLowerCase().includes(query) ||
+        l.loan_code?.toLowerCase().includes(query) ||
+        `#${l.id}`.includes(query)
+      );
+    });
 
   return (
     <div className="space-y-6 relative text-slate-800">
@@ -220,20 +437,33 @@ export default function LoanManager() {
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Kelola persetujuan pengajuan siswa & pencatatan transaksi peminjaman
-            buku
+            Kelola persetujuan pengajuan siswa, penyerahan buku, kalkulasi
+            denda, & perpanjangan masa pinjam.
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center shadow-md cursor-pointer transition"
-        >
-          <Plus className="w-4 h-4 mr-1.5" /> Pinjam Langsung di Tempat
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setScanModalOpen(true);
+              setUseCamera(false);
+            }}
+            className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center shadow-md cursor-pointer transition"
+          >
+            <QrCode className="w-4 h-4 mr-1.5 text-amber-400" /> Validasi Kode
+            Transaksi
+          </button>
+
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center shadow-md cursor-pointer transition"
+          >
+            <Plus className="w-4 h-4 mr-1.5" /> Pinjam Langsung di Tempat
+          </button>
+        </div>
       </div>
 
-      {/* Navigation Tabs & Search Bar */}
+      {/* Navigation Tabs, Dropdown Status Filter, & Search Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-3">
         <div className="flex gap-2">
           <button
@@ -263,15 +493,33 @@ export default function LoanManager() {
           </button>
         </div>
 
-        <div className="relative w-full md:w-72">
-          <input
-            type="text"
-            placeholder="Cari siswa, NISN, atau judul..."
-            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-amber-600 shadow-sm"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs">
+            <Filter className="w-3.5 h-3.5 text-slate-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="text-xs bg-transparent focus:outline-none font-medium text-slate-700 cursor-pointer"
+            >
+              <option value="all">Semua Status</option>
+              <option value="menunggu_konfirmasi">Menunggu Diambil</option>
+              <option value="dipinjam">Sedang Dipinjam</option>
+              <option value="terlambat">Terlambat (Warning)</option>
+              <option value="dikembalikan">Dikembalikan</option>
+              <option value="expired">Expired / Batal</option>
+            </select>
+          </div>
+
+          <div className="relative w-full md:w-72">
+            <input
+              type="text"
+              placeholder="Cari kode, siswa, NISN, atau judul..."
+              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-amber-600 shadow-sm"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          </div>
         </div>
       </div>
 
@@ -280,13 +528,13 @@ export default function LoanManager() {
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
             <tr>
-              <th className="p-4">Buku</th>
+              <th className="p-4">Kode & Buku</th>
               <th className="p-4">Siswa / Peminjam</th>
               <th className="p-4">Tgl Pinjam / Booking</th>
-              <th className="p-4">Batas Ambil (H+7) / Kembali</th>
+              <th className="p-4">Batas Ambil / Jatuh Tempo</th>
               <th className="p-4">Status</th>
-              <th className="p-4">Denda</th>
-              <th className="p-4 text-center">Aksi</th>
+              <th className="p-4">Kalkulasi Denda</th>
+              <th className="p-4 text-center">Aksi / Override</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -301,7 +549,7 @@ export default function LoanManager() {
                 <td colSpan="7" className="p-8 text-center text-slate-400">
                   {activeTab === "pending"
                     ? "Tidak ada pengajuan peminjaman baru dari siswa."
-                    : "Tidak ada riwayat transaksi."}
+                    : "Tidak ada riwayat transaksi yang cocok."}
                 </td>
               </tr>
             ) : (
@@ -310,13 +558,15 @@ export default function LoanManager() {
                   l.status === "dipinjam" || l.status === "borrowed";
                 const isReturned =
                   l.status === "dikembalikan" || l.status === "returned";
-                const isPending = l.status === "menunggu_konfirmasi";
+                const isPending =
+                  l.status === "menunggu_konfirmasi" || l.status === "booking";
                 const isOverdue =
                   isBorrowed && l.due_date && new Date(l.due_date) < new Date();
 
+                const estimatedFine = calculateFine(l.due_date, l.fine_amount);
+
                 return (
                   <tr key={l.id} className="hover:bg-slate-50/80 transition">
-                    {/* TAMPILAN SAMPUL BUKU & JUDUL */}
                     <td className="p-4 flex items-center gap-3">
                       {l.cover_image ? (
                         <img
@@ -330,11 +580,11 @@ export default function LoanManager() {
                         </div>
                       )}
                       <div>
-                        <p className="font-semibold text-slate-800 leading-snug">
-                          {l.book_title}
+                        <p className="font-mono font-bold text-amber-600 text-[11px]">
+                          {l.loan_code || `#${l.id}`}
                         </p>
-                        <p className="text-[10px] text-slate-400">
-                          ID Transaksi: #{l.id}
+                        <p className="font-semibold text-slate-800 leading-snug mt-0.5">
+                          {l.book_title}
                         </p>
                       </div>
                     </td>
@@ -355,7 +605,8 @@ export default function LoanManager() {
                           ? new Date(l.booking_date).toLocaleDateString("id-ID")
                           : "-"}
                     </td>
-                    <td className="p-4 text-slate-600">
+
+                    <td className="p-4 text-slate-600 font-medium">
                       {l.due_date
                         ? new Date(l.due_date).toLocaleDateString("id-ID")
                         : l.max_take_date
@@ -365,11 +616,10 @@ export default function LoanManager() {
                           : "-"}
                     </td>
 
-                    {/* STATUS TRANSACTION BADGE */}
                     <td className="p-4">
                       {isPending && (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                          <Clock className="w-3 h-3 mr-1" /> Menunggu Konfirmasi
+                          <Clock className="w-3 h-3 mr-1" /> Menunggu Diambil
                         </span>
                       )}
                       {isBorrowed && !isOverdue && (
@@ -378,8 +628,9 @@ export default function LoanManager() {
                         </span>
                       )}
                       {isBorrowed && isOverdue && (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">
-                          <AlertCircle className="w-3 h-3 mr-1" /> Terlambat
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500 text-white border border-rose-600 animate-pulse">
+                          <AlertTriangle className="w-3 h-3 mr-1" /> Terlambat
+                          (Warning)
                         </span>
                       )}
                       {isReturned && (
@@ -387,20 +638,24 @@ export default function LoanManager() {
                           <CheckCircle className="w-3 h-3 mr-1" /> Dikembalikan
                         </span>
                       )}
-                      {l.status === "ditolak" && (
+                      {(l.status === "ditolak" ||
+                        l.status === "expired" ||
+                        l.status === "batal") && (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                          <AlertCircle className="w-3 h-3 mr-1" /> Ditolak
+                          <AlertCircle className="w-3 h-3 mr-1" /> Expired /
+                          Batal
                         </span>
                       )}
                     </td>
 
-                    <td className="p-4 font-mono font-bold text-slate-700">
-                      {l.fine_amount > 0 ? (
-                        <span className="text-rose-600">
-                          Rp {Number(l.fine_amount).toLocaleString("id-ID")}
+                    <td className="p-4 font-mono font-bold">
+                      {estimatedFine > 0 ? (
+                        <span className="text-rose-600 bg-rose-50 px-2 py-1 rounded border border-rose-200 inline-flex items-center gap-1">
+                          <DollarSign className="w-3 h-3" />
+                          Rp {estimatedFine.toLocaleString("id-ID")}
                         </span>
                       ) : (
-                        "-"
+                        <span className="text-slate-400">-</span>
                       )}
                     </td>
 
@@ -416,7 +671,7 @@ export default function LoanManager() {
                               )
                             }
                             className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition cursor-pointer"
-                            title="Setujui Peminjaman"
+                            title="Setujui & Serahkan Buku"
                           >
                             <Check className="w-4 h-4" />
                           </button>
@@ -433,18 +688,23 @@ export default function LoanManager() {
                       )}
 
                       {isBorrowed && (
-                        <button
-                          onClick={() =>
-                            handleReturnClick(
-                              l.id,
-                              l.book_title,
-                              l.student_name,
-                            )
-                          }
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition text-[11px] font-bold cursor-pointer shadow-sm"
-                        >
-                          Kembalikan Buku
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => handleReturnClick(l)}
+                            className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition text-[11px] font-bold cursor-pointer shadow-sm"
+                          >
+                            Kembalikan
+                          </button>
+
+                          <button
+                            onClick={() => handleOverrideExtend(l.id)}
+                            className="px-2 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg transition text-[11px] font-bold cursor-pointer flex items-center gap-1"
+                            title="Perpanjang Masa Pinjam (Manual Admin)"
+                          >
+                            <CalendarPlus className="w-3.5 h-3.5" />
+                            <span>+Hari</span>
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -455,7 +715,81 @@ export default function LoanManager() {
         </table>
       </div>
 
-      {/* POP BOX MODAL KONFIRMASI (GANTI WINDOW.CONFIRM) */}
+      {/* MODAL SCAN / INPUT KODE TRANSAKSI MANUAL DENGAN KAMERA */}
+      {scanModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-slate-100 space-y-4 relative">
+            <button
+              onClick={() => {
+                setScanModalOpen(false);
+                setUseCamera(false);
+              }}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto">
+              <QrCode className="w-6 h-6" />
+            </div>
+
+            <div className="text-center">
+              <h3 className="text-lg font-bold font-heading text-slate-900">
+                Validasi Penyerahan Buku
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Scan QR Code siswa dengan kamera atau ketik kode transaksi
+                secara manual.
+              </p>
+            </div>
+
+            {useCamera ? (
+              <div className="space-y-3">
+                <div
+                  id="reader"
+                  className="overflow-hidden rounded-2xl border border-slate-200 min-h-[220px] bg-black"
+                ></div>
+                <button
+                  type="button"
+                  onClick={() => setUseCamera(false)}
+                  className="w-full py-2 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-200 transition cursor-pointer"
+                >
+                  Kembali ke Input Manual
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  placeholder="Contoh: LNK-20260921-ABCD atau #12"
+                  value={inputTransactionCode}
+                  onChange={(e) => setInputTransactionCode(e.target.value)}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center font-bold text-slate-900 focus:outline-none focus:border-amber-600"
+                />
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setUseCamera(true)}
+                    className="w-1/2 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 hover:bg-amber-100 transition cursor-pointer"
+                  >
+                    <Camera className="w-4 h-4" /> Kamera
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleVerifyCode()}
+                    className="w-1/2 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition cursor-pointer"
+                  >
+                    Cari & Verifikasi
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* POP BOX MODAL KONFIRMASI */}
       {confirmModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-slate-100 text-center space-y-4 relative">
@@ -504,7 +838,7 @@ export default function LoanManager() {
         </div>
       )}
 
-      {/* POP BOX MODAL NOTIFIKASI HASIL (GANTI WINDOW.ALERT) */}
+      {/* POP BOX MODAL NOTIFIKASI HASIL */}
       {alertModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-slate-100 text-center space-y-4 relative">

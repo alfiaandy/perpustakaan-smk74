@@ -39,6 +39,9 @@ app.use("/api/librarians", require("./routes/librarianRoutes"));
 // Route Visitor Logs
 app.use("/api/visitor-logs", require("./routes/visitorLogRoutes"));
 
+const fineRoutes = require("./routes/fineRoutes");
+app.use("/api/fines", fineRoutes);
+
 // 5. Base Route Test
 app.get("/", (req, res) => {
   res.json({

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -16,19 +16,14 @@ import {
 
 // List Kelas & Jurusan Seni SMKN 74 Jakarta
 const LIST_KELAS = [
-  // Kelas X
   "X Seni Tari",
   "X Seni Karawitan",
   "X Seni Musik",
   "X Seni Teater",
-
-  // Kelas XI
   "XI Seni Tari",
   "XI Seni Karawitan",
   "XI Seni Musik",
   "XI Seni Teater",
-
-  // Kelas XII
   "XII Seni Tari",
   "XII Seni Karawitan",
   "XII Seni Musik",
@@ -40,15 +35,30 @@ export default function StudentCard({ user, onUserUpdated }) {
   const [downloading, setDownloading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Ambil kelas awal dari props
+  const propClass = user?.class || user?.class_major || user?.kelas || "";
+
+  // State lokal khusus untuk pemicu re-render instan setelah simpan form
+  const [submittedClass, setSubmittedClass] = useState(propClass);
+
+  // Gabungkan kelas aktif (Prioritas: submittedClass -> propClass)
+  const currentClass = submittedClass || propClass;
+
   // State Form Lengkapi Data Kartu
-  const [classNameInput, setClassNameInput] = useState(
-    user?.class || user?.kelas || "",
-  );
+  const [classNameInput, setClassNameInput] = useState(currentClass);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
-  // Cek apakah data kelas sudah terisi
-  const hasClassData = Boolean(user?.class || user?.kelas);
+  // Sinkronisasi state lokal saat props user dari parent berubah
+  useEffect(() => {
+    if (propClass) {
+      setSubmittedClass(propClass);
+      setClassNameInput(propClass);
+    }
+  }, [propClass]);
+
+  // Cek apakah data kelas sudah terisi secara valid
+  const hasClassData = Boolean(currentClass && currentClass.trim() !== "");
 
   // Handler Simpan Data Kelas/Jurusan
   const handleSaveClass = async (e) => {
@@ -68,17 +78,29 @@ export default function StudentCard({ user, onUserUpdated }) {
       });
 
       if (res.data.success) {
-        // 1. Update localStorage agar session user tersimpan dengan data kelas baru
+        const savedClass = classNameInput.trim();
+
+        // 1. LANGSUNG UPDATE STATE LOKAL AGAR KARTU DITAMPILKAN SEKETIKA (INSTAN)
+        setSubmittedClass(savedClass);
+
+        // 2. Ambil data user balikan dari API / gabungkan lokal
+        const serverUser = res.data.user || {};
         const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-        const updatedUserData = { ...storedUser, class: classNameInput.trim() };
+        const updatedUserData = {
+          ...storedUser,
+          ...user,
+          ...serverUser,
+          class: savedClass,
+          class_major: savedClass,
+          kelas: savedClass,
+        };
+
+        // 3. Simpan permanen di LocalStorage
         localStorage.setItem("user", JSON.stringify(updatedUserData));
 
-        // 2. Panggil callback jika ada, atau update state parent tanpa reload halaman
+        // 4. Panggil callback induk jika ada untuk update state parent
         if (onUserUpdated) {
           onUserUpdated(updatedUserData);
-        } else {
-          user.class = classNameInput.trim();
-          setSaving(false);
         }
       }
     } catch (err) {
@@ -138,7 +160,7 @@ export default function StudentCard({ user, onUserUpdated }) {
   // TAMPILAN 1: FORM LENGKAPI DATA KARTU (Jika Kelas Masih Kosong)
   if (!hasClassData) {
     return (
-      <div className="max-w-md mx-auto bg-amber-50/60 border border-amber-200 p-6 rounded-3xl space-y-4 shadow-sm text-slate-800">
+      <div className="max-w-md mx-auto bg-amber-50/60 border border-amber-200 p-6 rounded-3xl space-y-4 shadow-xs text-slate-800">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-amber-500/20 text-amber-700 rounded-xl flex items-center justify-center shrink-0">
             <UserCheck className="w-5 h-5" />
@@ -354,7 +376,7 @@ export default function StudentCard({ user, onUserUpdated }) {
                   Kelas / Jurusan
                 </span>
                 <span style={{ color: "#e2e8f0", fontWeight: "600" }}>
-                  {user?.class || user?.kelas || "Siswa Aktif"}
+                  {currentClass || "Siswa Aktif"}
                 </span>
               </div>
             </div>

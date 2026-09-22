@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import Sidebar from "../../components/Sidebar";
+import Sidebar from "./Sidebar";
 import BookManager from "./BookManager";
 import MemberManager from "./MemberManager";
 import LoanManager from "./LoanManager";
@@ -8,6 +8,7 @@ import ModuleManager from "./ModuleManager";
 import LibrarianManager from "./LibrarianManager";
 import VisitorScanner from "./VisitorScanner";
 import VisitorReport from "./VisitorReport";
+import FinancialReport from "./FinancialReport";
 import API from "../../services/api";
 import { BookOpen, Users, ArrowLeftRight, Clock, Menu } from "lucide-react";
 
@@ -182,9 +183,9 @@ export default function Dashboard({ user, onLogout, onGoToCatalog }) {
               </h2>
               <p className="text-xs md:text-sm text-slate-600 leading-relaxed">
                 Fitur Manajemen Data Buku, Data Anggota Siswa, Transaksi
-                Peminjaman/Pengembalian, Scan QR Absensi Pengunjung, Pengelolaan
-                Berita & Modul Digital, serta Tim Pustakawan telah aktif
-                sepenuhnya.
+                Peminjaman/Pengembalian, Laporan Keuangan & Denda, Scan QR
+                Absensi Pengunjung, Pengelolaan Berita & Modul Digital, serta
+                Tim Pustakawan telah aktif sepenuhnya.
               </p>
             </div>
           </div>
@@ -205,6 +206,9 @@ export default function Dashboard({ user, onLogout, onGoToCatalog }) {
         {/* Component Transaksi Peminjaman / Pengembalian */}
         {activeMenu === "loans" && <LoanManager />}
 
+        {/* Component Laporan Keuangan & Denda */}
+        {activeMenu === "financial-report" && <FinancialReport />}
+
         {/* Component Kelola Berita & Pengumuman */}
         {activeMenu === "news" && <NewsManager />}
 
@@ -221,6 +225,7 @@ export default function Dashboard({ user, onLogout, onGoToCatalog }) {
           activeMenu !== "books" &&
           activeMenu !== "members" &&
           activeMenu !== "loans" &&
+          activeMenu !== "financial-report" &&
           activeMenu !== "news" &&
           activeMenu !== "modules" &&
           activeMenu !== "librarians" && (

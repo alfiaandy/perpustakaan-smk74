@@ -106,7 +106,7 @@ exports.requestLoan = async (req, res) => {
 
     // STEP D: Cek Limit Pinjaman (Maksimal 3 buku aktif/booking)
     const [activeLoans] = await connection.query(
-      "SELECT COUNT(*) AS total FROM loans WHERE member_id = ? AND status IN ('menunggu_konfirmasi', 'borrowed', 'dipinjam')",
+      "SELECT COUNT(*) AS total FROM loans WHERE member_id = ? AND status IN ('menunggu_konfirmasi', 'borrowed', 'dipinjam', 'booking')",
       [memberId],
     );
     if (activeLoans[0].total >= 3) {
@@ -209,10 +209,12 @@ exports.rejectLoan = async (req, res) => {
         .json({ success: false, message: "Transaksi tidak ditemukan" });
     }
 
-    // Kembalikan stok jika batal
+    // Kembalikan stok jika batal/ditolak
     if (
       loans[0].status === "borrowed" ||
-      loans[0].status === "menunggu_konfirmasi"
+      loans[0].status === "dipinjam" ||
+      loans[0].status === "menunggu_konfirmasi" ||
+      loans[0].status === "booking"
     ) {
       await connection.query(
         "UPDATE books SET available_stock = available_stock + 1 WHERE id = ?",
@@ -427,6 +429,8 @@ exports.getMyLoans = async (req, res) => {
         l.due_date,
         l.return_date,
         l.status,
+        l.late_days,
+        l.fine_amount,
         b.title AS book_title,
         b.author,
         b.cover_image
@@ -445,5 +449,157 @@ exports.getMyLoans = async (req, res) => {
       success: false,
       message: "Gagal mengambil data peminjaman Anda: " + error.message,
     });
+  }
+};
+
+// 8. Pembatalan Booking Mandiri oleh Siswa
+exports.cancelMyBooking = async (req, res) => {
+  const connection = await db.getConnection();
+  try {
+    const { id } = req.params;
+    await connection.beginTransaction();
+
+    const [loans] = await connection.query(
+      "SELECT book_id, status FROM loans WHERE id = ?",
+      [id],
+    );
+
+    if (loans.length === 0) {
+      await connection.rollback();
+      return res
+        .status(404)
+        .json({ success: false, message: "Data booking tidak ditemukan." });
+    }
+
+    if (
+      loans[0].status !== "menunggu_konfirmasi" &&
+      loans[0].status !== "booking"
+    ) {
+      await connection.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Hanya booking yang belum diambil yang dapat dibatalkan.",
+      });
+    }
+
+    // Ubah status menjadi 'batal'
+    await connection.query("UPDATE loans SET status = 'batal' WHERE id = ?", [
+      id,
+    ]);
+
+    // Kembalikan stok buku
+    await connection.query(
+      "UPDATE books SET available_stock = available_stock + 1 WHERE id = ?",
+      [loans[0].book_id],
+    );
+
+    await connection.commit();
+    res.json({
+      success: true,
+      message: "Booking buku berhasil dibatalkan.",
+    });
+  } catch (error) {
+    await connection.rollback();
+    res.status(500).json({ success: false, message: error.message });
+  } finally {
+    connection.release();
+  }
+};
+
+// 9. Perpanjangan Peminjaman Mandiri oleh Siswa (+7 Hari)
+exports.extendMyLoan = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [loans] = await db.query(
+      "SELECT status, due_date FROM loans WHERE id = ?",
+      [id],
+    );
+
+    if (loans.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Peminjaman tidak ditemukan." });
+    }
+
+    const loan = loans[0];
+    if (loan.status !== "borrowed" && loan.status !== "dipinjam") {
+      return res.status(400).json({
+        success: false,
+        message: "Hanya buku yang sedang dipinjam yang dapat diperpanjang.",
+      });
+    }
+
+    // Cek apakah sudah terlambat
+    if (new Date(loan.due_date) < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Peminjaman yang sudah terlambat tidak dapat diperpanjang. Silakan kembalikan buku ke petugas.",
+      });
+    }
+
+    // Tambahkan 7 hari ke due_date
+    await db.query(
+      "UPDATE loans SET due_date = DATE_ADD(due_date, INTERVAL 7 DAY) WHERE id = ?",
+      [id],
+    );
+
+    res.json({
+      success: true,
+      message: "Peminjaman berhasil diperpanjang 7 hari!",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 10. Admin Override Perpanjangan Manual
+exports.adminOverrideExtend = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { extraDays } = req.body;
+    const daysToAdd = parseInt(extraDays) || 7;
+
+    await db.query(
+      "UPDATE loans SET due_date = DATE_ADD(COALESCE(due_date, NOW()), INTERVAL ? DAY) WHERE id = ?",
+      [daysToAdd, id],
+    );
+
+    res.json({
+      success: true,
+      message: `Berhasil memperpanjang masa pinjam sebanyak ${daysToAdd} hari.`,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 11. Cron Job Function: Pembatalan Otomatis Booking Kadaluarsa (H+7)
+exports.autoCancelExpiredBookings = async () => {
+  try {
+    const [expiredLoans] = await db.query(`
+      SELECT id, book_id FROM loans 
+      WHERE status IN ('booking', 'menunggu_konfirmasi') 
+      AND max_take_date < NOW()
+    `);
+
+    for (const loan of expiredLoans) {
+      await db.query("UPDATE loans SET status = 'expired' WHERE id = ?", [
+        loan.id,
+      ]);
+      await db.query(
+        "UPDATE books SET available_stock = available_stock + 1 WHERE id = ?",
+        [loan.book_id],
+      );
+    }
+
+    if (expiredLoans.length > 0) {
+      console.log(
+        `[CRON JOB] Berhasil membatalkan ${expiredLoans.length} booking kadaluarsa (H+7).`,
+      );
+    }
+  } catch (error) {
+    console.error("[CRON JOB ERROR]:", error);
   }
 };

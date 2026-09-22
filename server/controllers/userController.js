@@ -43,17 +43,18 @@ exports.deleteStudent = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const userId = req.body.userId || req.user?.id;
-    const { class_name } = req.body;
+    const rawClass =
+      req.body.class_name || req.body.class_major || req.body.class;
 
     // Validasi 1: Kelengkapan Parameter
-    if (!userId || !class_name) {
+    if (!userId || !rawClass) {
       return res.status(400).json({
         success: false,
         message: "ID User dan Kelas/Jurusan wajib diisi.",
       });
     }
 
-    const formattedClassName = class_name.trim();
+    const formattedClassName = rawClass.trim();
 
     // Validasi 2: Memastikan Kelas & Jurusan Sesuai Daftar Resmi
     if (!VALID_CLASSES.includes(formattedClassName)) {
@@ -73,10 +74,17 @@ exports.updateProfile = async (req, res) => {
       [userId],
     );
 
+    const updatedUser = updatedUsers[0];
+
     res.json({
       success: true,
       message: "Data kartu anggota berhasil diperbarui!",
-      user: updatedUsers[0],
+      user: {
+        ...updatedUser,
+        class: updatedUser.class,
+        class_major: updatedUser.class, // Alias untuk sinkronisasi antarmuka
+        kelas: updatedUser.class,
+      },
     });
   } catch (error) {
     console.error("Error updateProfile:", error);
